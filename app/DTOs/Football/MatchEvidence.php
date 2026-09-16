@@ -18,5 +18,12 @@ final readonly class MatchEvidence {
   public float $bttsRate,
   public bool $rotationRisk=false,
   public bool $highVarianceCompetition=false,
+  public float $over25Rate=0.0,
+  public float $over35Rate=0.0,
+  public float $averageTotalGoals=0.0,
+  public float $homeRelevantOver35Rate=0.0,
+  public float $awayRelevantOver35Rate=0.0,
+  public float $homeRelevantAverageGoals=0.0,
+  public float $awayRelevantAverageGoals=0.0,
  ) {}
 }
