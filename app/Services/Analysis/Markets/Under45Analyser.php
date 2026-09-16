@@ -21,18 +21,40 @@ final class Under45Analyser
         ];
         $contradictions = [];
 
-        // A clean 10-match sample should support a strong screening score, but never a near-certain 96/100 by itself.
-        $score = (int) round(88 - ($e->over45Rate * 50));
-        if ($e->sampleSize >= 10 && $e->over45Rate === 0.0) $score += 4;
+        // Use the two team-specific 5+ goal rates as well as the combined rate.
+        // This prevents every clean 10-match sample from collapsing to the same 92.
+        $weightedFivePlus = ($e->over45Rate * .50)
+            + ($e->homeTeamOver45Rate * .25)
+            + ($e->awayTeamOver45Rate * .25);
+
+        $score = (int) round(90 - ($weightedFivePlus * 65));
+
+        if ($e->sampleSize >= 10 && $weightedFivePlus <= .05) {
+            $score += 2;
+            $positive[] = 'The recent samples contain very little 5+ goal evidence.';
+        }
         if ($e->sampleSize < 7) $score -= 8;
         if ($e->sampleSize < 5) $score -= 10;
 
         $quality = min(100, 45 + $e->sampleSize * 5);
-        if ($e->over45Rate <= .10) $positive[] = 'Five-or-more-goal matches are rare in the recent samples.';
-        if ($e->over45Rate >= .20) { $contradictions[] = 'Recent 5+ goal frequency is too high for a conservative under.'; $score -= 10; }
-        if ($e->homeTeamOver45Rate >= .30 || $e->awayTeamOver45Rate >= .30) { $contradictions[] = 'At least one team has repeated recent 5+ goal matches.'; $score -= 10; }
-        if ($e->highVarianceCompetition) { $contradictions[] = 'Competition is classified as high variance.'; $score -= 10; $quality -= 20; }
-        if ($e->rotationRisk) { $contradictions[] = 'Rotation can increase match volatility.'; $score -= 6; }
+
+        if ($weightedFivePlus >= .15) {
+            $contradictions[] = 'The weighted recent 5+ goal frequency is too high for a conservative under.';
+            $score -= 10;
+        }
+        if ($e->homeTeamOver45Rate >= .30 || $e->awayTeamOver45Rate >= .30) {
+            $contradictions[] = 'At least one team has repeated recent 5+ goal matches.';
+            $score -= 10;
+        }
+        if ($e->highVarianceCompetition) {
+            $contradictions[] = 'Competition or teams are classified as high variance.';
+            $score -= 15;
+            $quality -= 25;
+        }
+        if ($e->rotationRisk) {
+            $contradictions[] = 'Rotation can increase match volatility.';
+            $score -= 6;
+        }
 
         $score = max(0, min(100, $score));
         $quality = max(0, min(100, $quality));
