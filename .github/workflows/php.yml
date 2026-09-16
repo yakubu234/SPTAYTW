@@ -1,0 +1,31 @@
+name: PHP validation
+
+on:
+  push:
+    branches: [master, 'feature/**']
+  pull_request:
+    branches: [master]
+
+jobs:
+  syntax-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Validate Composer metadata
+        run: composer validate --no-check-publish
+
+      - name: Install dependencies without Laravel scripts
+        run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - name: PHP syntax check
+        run: find app config database routes tests -type f -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: Run isolated unit tests
+        run: vendor/bin/phpunit tests/Unit

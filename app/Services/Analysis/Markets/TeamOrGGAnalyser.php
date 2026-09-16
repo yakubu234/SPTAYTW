@@ -1,0 +1,7 @@
+<?php
+namespace App\Services\Analysis\Markets;
+use App\DTOs\Football\{MarketAnalysisResult,MatchEvidence}; use App\Enums\MarketType; use App\Services\Analysis\MarketStatusResolver;
+final class TeamOrGGAnalyser { public function __construct(private MarketStatusResolver $status){}
+ public function analyse(string $home,string $away,MatchEvidence $e):array { return [$this->side(true,$home,$e),$this->side(false,$away,$e)]; }
+ private function side(bool $home,string $name,MatchEvidence $e):MarketAnalysisResult { $win=$home?$e->homeRelevantWinRate:$e->awayRelevantWinRate;$scored=$home?$e->homeScoredRate:$e->awayScoredRate;$other=$home?$e->awayScoredRate:$e->homeScoredRate;$p=[];$n=[];$gg=min($scored,$other);$score=(int)round(20+$win*35+$gg*35+$e->bttsRate*10);$q=min(100,45+$e->sampleSize*5);if($win>=.55)$p[]='Selected team has a useful relevant-split win rate.'; if($gg>=.7)$p[]='Both teams have strong recent scoring frequencies.';if($win<.4){$n[]='The selected-team win route is weak.';$score-=8;} if($gg<.6){$n[]='The GG route is not independently strong enough.';$score-=10;} if($e->highVarianceCompetition){$n[]='High-variance competition.';$score-=10;$q-=10;} if($e->rotationRisk){$n[]='Rotation risk.';$score-=7;}$score=max(0,min(100,$score)); return new MarketAnalysisResult(MarketType::TEAM_OR_GG,"{$name} or GG",$score,max(0,$q),$this->status->resolve($score,$q,88),$p,$n,$n[0]??'The bet fails if the selected team does not win and both teams do not score.'); }
+}

@@ -1,0 +1,7 @@
+<?php
+namespace App\Services\Analysis\Markets;
+use App\DTOs\Football\{MarketAnalysisResult,MatchEvidence}; use App\Enums\MarketType; use App\Services\Analysis\MarketStatusResolver;
+final class MatchWinnerAnalyser { public function __construct(private MarketStatusResolver $status){}
+ public function analyse(string $home,string $away,MatchEvidence $e):array { return [$this->side(true,$home,$e),$this->side(false,$away,$e)]; }
+ private function side(bool $home,string $name,MatchEvidence $e):MarketAnalysisResult { $own=$home?$e->homeWinRate:$e->awayWinRate;$split=$home?$e->homeRelevantWinRate:$e->awayRelevantWinRate;$opp=$home?$e->awayWinRate:$e->homeWinRate;$p=[];$n=[];$score=(int)round(25+$own*28+$split*30+(1-$opp)*17);$q=min(100,45+$e->sampleSize*5); if($own>=.6)$p[]='Strong recent win frequency.'; if($split>=.6)$p[]='Strong win rate in the relevant home/away split.'; if($opp>=.5){$n[]='Opponent also has a meaningful recent win rate.';$score-=10;} if($e->highVarianceCompetition){$n[]='High-variance competition makes outright results less reliable.';$score-=10;$q-=10;} if($e->rotationRisk){$n[]='Rotation risk weakens an outright-win selection.';$score-=8;} $score=max(0,min(100,$score));$market=$home?MarketType::HOME:MarketType::AWAY; return new MarketAnalysisResult($market,"{$name} to Win",$score,max(0,$q),$this->status->resolve($score,$q,84),$p,$n,$n[0]??'A draw is enough to lose an outright winner selection.'); }
+}
