@@ -57,7 +57,7 @@ Merge `routes/console.php.example` into the Laravel application's `routes/consol
 ```cron
 * * * * * cd /var/www/sporty-safe-engine && php artisan schedule:run >> /dev/null 2>&1
 ```
-See `docs/DEPLOYMENT_UBUNTU.md` for Nginx/PHP-FPM deployment notes.
+See `docs/DEPLOYMENT.md` for Nginx/PHP-FPM deployment notes.
 
 ## Safety / integrity rules
 - no automatic SportyBet login or bet placement
