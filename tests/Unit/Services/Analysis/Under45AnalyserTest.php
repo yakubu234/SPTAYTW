@@ -27,10 +27,11 @@ final class Under45AnalyserTest extends TestCase
     public function test_high_variance_competition_is_penalised_in_score_and_quality(): void
     {
         $result = (new Under45Analyser(new MarketStatusResolver()))->analyse($this->evidence(0.0, true));
-        $this->assertSame(82, $result->score);
-        $this->assertSame(75, $result->dataQuality);
-        $this->assertSame(AnalysisStatus::QUALIFIED, $result->status);
+        $this->assertSame(77, $result->score);
+        $this->assertSame(70, $result->dataQuality);
+        $this->assertSame(AnalysisStatus::WATCH, $result->status);
         $this->assertNotEmpty($result->contradictions);
+        $this->assertStringContainsString('high variance', $result->contradictions[0]);
     }
 
     public function test_repeated_five_goal_matches_prevent_qualification(): void
