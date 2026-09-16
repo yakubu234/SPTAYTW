@@ -15,7 +15,7 @@ final class TeamOver05AnalyserTest extends TestCase
         return new TeamOver05Analyser(new DataQualityService(), new MarketStatusResolver());
     }
 
-    public function test_consistent_scoring_evidence_qualifies(): void
+    public function test_consistent_scoring_evidence_is_watch_at_79(): void
     {
         $result = $this->analyser()->analyse('Example FC', new TeamGoalEvidence(
             sampleSize: 10,
@@ -25,6 +25,23 @@ final class TeamOver05AnalyserTest extends TestCase
             opponentVenueConcededRate: .8,
             opponentCleanSheetRate: .1,
             teamFailedToScoreRate: .1,
+        ));
+
+        $this->assertSame(79, $result->score);
+        $this->assertSame(AnalysisStatus::WATCH, $result->status);
+        $this->assertSame(95, $result->dataQuality);
+    }
+
+    public function test_stronger_scoring_evidence_qualifies(): void
+    {
+        $result = $this->analyser()->analyse('Example FC', new TeamGoalEvidence(
+            sampleSize: 10,
+            teamScoredRate: 1,
+            venueScoredRate: 1,
+            opponentConcededRate: 1,
+            opponentVenueConcededRate: 1,
+            opponentCleanSheetRate: 0,
+            teamFailedToScoreRate: 0,
         ));
 
         $this->assertGreaterThanOrEqual(80, $result->score);
