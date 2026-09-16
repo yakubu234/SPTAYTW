@@ -10,7 +10,9 @@ class FootballDashboardController extends Controller {
     public function index(Request $request){
         $date=Carbon::parse($request->string('date')->toString() ?: now()->toDateString());
         $analyses=MarketAnalysis::with(['fixture.competition','fixture.homeTeam','fixture.awayTeam'])->whereHas('fixture',fn($q)=>$q->whereDate('kickoff_at',$date->toDateString()))->orderByDesc('score')->orderByDesc('data_quality_score')->get();
-        $latest=$analyses->groupBy(fn($a)=>$a->fixture_id.'|'.$a->market_type.'|'.$a->selection)->map->first()->values();
+        // The dashboard is a fixture shortlist: show only the highest-ranked market for each fixture.
+        // All other markets remain available through their stored analyses and detail links.
+        $latest=$analyses->groupBy('fixture_id')->map->first()->sortByDesc('score')->values();
         $stats=['fixtures'=>Fixture::whereDate('kickoff_at',$date)->count(),'strong'=>$latest->where('status','strong_qualified')->count(),'qualified'=>$latest->where('status','qualified')->count(),'watch'=>$latest->where('status','watch')->count(),'skip'=>$latest->where('status','skip')->count()]; return view('football.dashboard',compact('date','latest','stats'));
     }
     public function refresh(Request $request,FixtureImporter $importer,FixtureAnalysisService $service){$data=$request->validate(['date'=>'required|date']);$date=Carbon::parse($data['date']);$count=$importer->importDate($date->toDateString());$fixtures=Fixture::with(['homeTeam','awayTeam','competition'])->whereDate('kickoff_at',$date)->get();$analysed=0;foreach($fixtures as $fixture){if(in_array($fixture->status,['FT','AET','PEN','CANC','PST'],true))continue;$analysed+=count($service->analyse($fixture));}return redirect()->route('football.dashboard',['date'=>$date->toDateString()])->with('message',"Synced {$count} fixtures and generated {$analysed} market analyses.");}
