@@ -15,7 +15,14 @@ final class TeamOver05Analyser
         $dataQuality = $this->quality->score($evidence);
         $score = 20 + ($evidence->teamScoredRate * 22) + ($evidence->venueScoredRate * 18) + ($evidence->opponentConcededRate * 17) + ($evidence->opponentVenueConcededRate * 13) - ($evidence->opponentCleanSheetRate * 12) - ($evidence->teamFailedToScoreRate * 12) - ($evidence->majorAttackerMissing ? 7 : 0) - ($evidence->rotationRisk ? 6 : 0) - ($evidence->highVarianceCompetition ? 8 : 0);
         $score = (int) round(max(0, min(100, $score)));
-        $positive = [];
+        $positive = [
+            sprintf('Evidence: %d completed matches per team available.', $evidence->sampleSize),
+            sprintf('Evidence: team scored in %.0f%% of recent matches.', $evidence->teamScoredRate * 100),
+            sprintf('Evidence: team scored in %.0f%% of relevant venue matches.', $evidence->venueScoredRate * 100),
+            sprintf('Evidence: opponent conceded in %.0f%% of recent matches.', $evidence->opponentConcededRate * 100),
+            sprintf('Evidence: opponent conceded in %.0f%% of relevant venue matches.', $evidence->opponentVenueConcededRate * 100),
+            sprintf('Evidence: opponent clean-sheet rate %.0f%%; team failed-to-score rate %.0f%%.', $evidence->opponentCleanSheetRate * 100, $evidence->teamFailedToScoreRate * 100),
+        ];
         $contradictions = [];
         if ($evidence->teamScoredRate >= .8) $positive[] = 'Team scored in at least 80% of the overall sample.';
         if ($evidence->venueScoredRate >= .8) $positive[] = 'Team scored in at least 80% of the relevant venue sample.';
