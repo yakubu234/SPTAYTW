@@ -14,6 +14,8 @@ final class HistoricalBacktestContractTest extends TestCase
         $this->assertStringContainsString('teamFixturesBefore', $contract);
         $this->assertStringContainsString("'to' => \$before", $provider);
         $this->assertStringContainsString("\$payload['errors']", $provider);
+        $this->assertStringContainsString('array_slice($rows, 0, max(1, $last))', $provider);
+        $this->assertStringNotContainsString("'to' => \$before,\n                'last' => \$last", $provider);
         $this->assertStringContainsString('teamFixturesBefore', $team);
         $this->assertStringContainsString('teamFixturesBefore', $match);
     }
