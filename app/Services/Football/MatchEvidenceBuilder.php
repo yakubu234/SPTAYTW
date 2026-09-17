@@ -1,9 +1,11 @@
 <?php
+
 namespace App\Services\Football;
 
 use App\Contracts\Football\FootballDataProvider;
 use App\DTOs\Football\MatchEvidence;
 use App\Models\Fixture;
+use Carbon\CarbonImmutable;
 
 final class MatchEvidenceBuilder
 {
@@ -12,8 +14,12 @@ final class MatchEvidenceBuilder
     public function build(Fixture $f, int $sample = 10): MatchEvidence
     {
         $f->loadMissing(['homeTeam', 'awayTeam', 'competition']);
-        $h = $this->rows($this->provider->teamFixtures($f->homeTeam->provider_id, max(10, $sample)), $sample);
-        $a = $this->rows($this->provider->teamFixtures($f->awayTeam->provider_id, max(10, $sample)), $sample);
+
+        // Ask for extra completed matches because the provider's "last" window can
+        // contain the target fixture itself when analysing a historical date.
+        $fetch = max(20, $sample * 2);
+        $h = $this->rowsBefore($this->provider->teamFixtures($f->homeTeam->provider_id, $fetch), $f, $sample);
+        $a = $this->rowsBefore($this->provider->teamFixtures($f->awayTeam->provider_id, $fetch), $f, $sample);
         $hv = array_values(array_filter($h, fn ($r) => $this->isHome($r, $f->homeTeam->provider_id)));
         $av = array_values(array_filter($a, fn ($r) => !$this->isHome($r, $f->awayTeam->provider_id)));
         $c = array_merge($h, $a);
@@ -45,12 +51,27 @@ final class MatchEvidenceBuilder
         );
     }
 
-    private function rows(array $rows, int $sample): array
+    private function rowsBefore(array $rows, Fixture $fixture, int $sample): array
     {
-        return array_slice(array_values(array_filter($rows, fn ($x) =>
-            isset($x['goals']['home'], $x['goals']['away'])
-            && ($x['fixture']['status']['short'] ?? 'FT') === 'FT'
-        )), 0, $sample);
+        $kickoff = CarbonImmutable::parse($fixture->kickoff_at);
+
+        $eligible = array_values(array_filter($rows, function ($row) use ($fixture, $kickoff) {
+            if (!isset($row['goals']['home'], $row['goals']['away'])) {
+                return false;
+            }
+            if (($row['fixture']['status']['short'] ?? null) !== 'FT') {
+                return false;
+            }
+            if ((int) ($row['fixture']['id'] ?? 0) === (int) $fixture->provider_id) {
+                return false;
+            }
+            $date = $row['fixture']['date'] ?? null;
+            return $date && CarbonImmutable::parse($date)->lt($kickoff);
+        }));
+
+        usort($eligible, fn ($a, $b) => strcmp((string) ($b['fixture']['date'] ?? ''), (string) ($a['fixture']['date'] ?? '')));
+
+        return array_slice($eligible, 0, $sample);
     }
 
     private function isHome(array $r, int $id): bool { return (int) ($r['teams']['home']['id'] ?? 0) === $id; }
