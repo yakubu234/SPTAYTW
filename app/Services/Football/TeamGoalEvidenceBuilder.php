@@ -17,9 +17,10 @@ final class TeamGoalEvidenceBuilder
         $team = $forHomeTeam ? $fixture->homeTeam : $fixture->awayTeam;
         $opp = $forHomeTeam ? $fixture->awayTeam : $fixture->homeTeam;
         $fetch = max(20, $sample * 2);
+        $before = CarbonImmutable::parse($fixture->kickoff_at)->subDay()->toDateString();
 
-        $teamRows = $this->completedBefore($this->provider->teamFixtures($team->provider_id, $fetch), $fixture, $sample);
-        $oppRows = $this->completedBefore($this->provider->teamFixtures($opp->provider_id, $fetch), $fixture, $sample);
+        $teamRows = $this->completedBefore($this->provider->teamFixturesBefore($team->provider_id, $before, $fetch), $fixture, $sample);
+        $oppRows = $this->completedBefore($this->provider->teamFixturesBefore($opp->provider_id, $before, $fetch), $fixture, $sample);
         $teamVenue = array_values(array_filter($teamRows, fn ($r) => $this->isHome($r, $team->provider_id) === $forHomeTeam));
         $oppRelevantHome = !$forHomeTeam;
         $oppVenue = array_values(array_filter($oppRows, fn ($r) => $this->isHome($r, $opp->provider_id) === $oppRelevantHome));
@@ -41,23 +42,13 @@ final class TeamGoalEvidenceBuilder
     private function completedBefore(array $rows, Fixture $fixture, int $sample): array
     {
         $kickoff = CarbonImmutable::parse($fixture->kickoff_at);
-
         $eligible = array_values(array_filter($rows, function ($row) use ($fixture, $kickoff) {
-            if (!isset($row['goals']['home'], $row['goals']['away'])) {
-                return false;
-            }
-            if (($row['fixture']['status']['short'] ?? null) !== 'FT') {
-                return false;
-            }
-            if ((int) ($row['fixture']['id'] ?? 0) === (int) $fixture->provider_id) {
-                return false;
-            }
+            if (!isset($row['goals']['home'], $row['goals']['away']) || ($row['fixture']['status']['short'] ?? null) !== 'FT') return false;
+            if ((int) ($row['fixture']['id'] ?? 0) === (int) $fixture->provider_id) return false;
             $date = $row['fixture']['date'] ?? null;
             return $date && CarbonImmutable::parse($date)->lt($kickoff);
         }));
-
         usort($eligible, fn ($a, $b) => strcmp((string) ($b['fixture']['date'] ?? ''), (string) ($a['fixture']['date'] ?? '')));
-
         return array_slice($eligible, 0, $sample);
     }
 
