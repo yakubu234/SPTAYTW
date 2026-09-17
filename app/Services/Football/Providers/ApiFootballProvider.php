@@ -60,12 +60,20 @@ final class ApiFootballProvider implements FootballDataProvider
         $cacheKey = 'before:' . $teamId . ':' . $before . ':' . $last;
 
         if (!array_key_exists($cacheKey, $this->teamFixtureCache)) {
-            $this->teamFixtureCache[$cacheKey] = $this->get('/fixtures', [
+            // API-Football rejects combining `to` with `last`. Fetch the
+            // date-bounded completed history and trim it locally instead.
+            $rows = $this->get('/fixtures', [
                 'team' => $teamId,
                 'to' => $before,
-                'last' => $last,
                 'status' => 'FT',
             ]);
+
+            usort($rows, fn (array $a, array $b) => strcmp(
+                (string) ($b['fixture']['date'] ?? ''),
+                (string) ($a['fixture']['date'] ?? '')
+            ));
+
+            $this->teamFixtureCache[$cacheKey] = array_slice($rows, 0, max(1, $last));
         }
 
         return $this->teamFixtureCache[$cacheKey];
