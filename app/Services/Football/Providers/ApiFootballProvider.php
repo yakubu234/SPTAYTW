@@ -3,6 +3,7 @@
 namespace App\Services\Football\Providers;
 
 use App\Contracts\Football\FootballDataProvider;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -60,14 +61,36 @@ final class ApiFootballProvider implements FootballDataProvider
         $cacheKey = 'before:' . $teamId . ':' . $before . ':' . $last;
 
         if (!array_key_exists($cacheKey, $this->teamFixtureCache)) {
-            // API-Football rejects combining `to` with `last`. Fetch the
-            // date-bounded completed history and trim it locally instead.
-            $rows = $this->get('/fixtures', [
-                'team' => $teamId,
-                'to' => $before,
-                'status' => 'FT',
-            ]);
+            $to = CarbonImmutable::parse($before)->startOfDay();
+            $from = $to->subDays(400);
+            $rows = [];
 
+            // API-Football date-range fixture queries require both `from` and
+            // `to`, plus a season. Try the target calendar year first (works
+            // for calendar-year leagues and seasons beginning that year), then
+            // the previous season when more history is needed.
+            foreach ([$to->year, $to->year - 1] as $season) {
+                $seasonRows = $this->get('/fixtures', [
+                    'team' => $teamId,
+                    'season' => $season,
+                    'from' => $from->toDateString(),
+                    'to' => $to->toDateString(),
+                    'status' => 'FT',
+                ]);
+
+                foreach ($seasonRows as $row) {
+                    $fixtureId = (int) ($row['fixture']['id'] ?? 0);
+                    if ($fixtureId > 0) {
+                        $rows[$fixtureId] = $row;
+                    }
+                }
+
+                if (count($rows) >= $last) {
+                    break;
+                }
+            }
+
+            $rows = array_values($rows);
             usort($rows, fn (array $a, array $b) => strcmp(
                 (string) ($b['fixture']['date'] ?? ''),
                 (string) ($a['fixture']['date'] ?? '')
