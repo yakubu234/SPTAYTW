@@ -18,13 +18,21 @@ final class ApiFootballProvider implements FootballDataProvider
             throw new RuntimeException('API_FOOTBALL_KEY is not configured.');
         }
 
-        return Http::baseUrl(config('football.api_football.base_url'))
+        $payload = Http::baseUrl(config('football.api_football.base_url'))
             ->withHeaders(['x-apisports-key' => $key])
             ->timeout(config('football.api_football.timeout', 15))
             ->retry(2, 300)
             ->get($path, $query)
             ->throw()
-            ->json('response') ?? [];
+            ->json();
+
+        $errors = $payload['errors'] ?? [];
+        if (!empty($errors)) {
+            $message = is_array($errors) ? json_encode($errors, JSON_UNESCAPED_SLASHES) : (string) $errors;
+            throw new RuntimeException('API-Football returned an error: ' . $message);
+        }
+
+        return is_array($payload['response'] ?? null) ? $payload['response'] : [];
     }
 
     public function fixtures(string $date): array
@@ -34,11 +42,27 @@ final class ApiFootballProvider implements FootballDataProvider
 
     public function teamFixtures(int $teamId, int $last = 10): array
     {
-        $cacheKey = $teamId . ':' . $last;
+        $cacheKey = 'last:' . $teamId . ':' . $last;
 
         if (!array_key_exists($cacheKey, $this->teamFixtureCache)) {
             $this->teamFixtureCache[$cacheKey] = $this->get('/fixtures', [
                 'team' => $teamId,
+                'last' => $last,
+                'status' => 'FT',
+            ]);
+        }
+
+        return $this->teamFixtureCache[$cacheKey];
+    }
+
+    public function teamFixturesBefore(int $teamId, string $before, int $last = 10): array
+    {
+        $cacheKey = 'before:' . $teamId . ':' . $before . ':' . $last;
+
+        if (!array_key_exists($cacheKey, $this->teamFixtureCache)) {
+            $this->teamFixtureCache[$cacheKey] = $this->get('/fixtures', [
+                'team' => $teamId,
+                'to' => $before,
                 'last' => $last,
                 'status' => 'FT',
             ]);
