@@ -70,15 +70,17 @@ final class ApiFootballProvider implements FootballDataProvider
             // for calendar-year leagues and seasons beginning that year), then
             // the previous season when more history is needed.
             foreach ([$to->year, $to->year - 1] as $season) {
-                $seasonRows = $this->get('/fixtures', [
-                    'team' => $teamId,
-                    'season' => $season,
-                    'from' => $from->toDateString(),
-                    'to' => $to->toDateString(),
-                    'status' => 'FT',
-                ]);
+                // Cache the broad team/season history persistently, then apply
+                // the target-fixture cutoff locally. Adjacent historical dates
+                // can therefore reuse the same provider response without
+                // leaking target/future results into the evidence window.
+                $seasonRows = $this->cachedTeamSeasonFixtures($teamId, $season, $from);
 
                 foreach ($seasonRows as $row) {
+                    $fixtureDate = (string) ($row['fixture']['date'] ?? '');
+                    if ($fixtureDate === '' || CarbonImmutable::parse($fixtureDate)->gte($to)) {
+                        continue;
+                    }
                     $fixtureId = (int) ($row['fixture']['id'] ?? 0);
                     if ($fixtureId > 0) {
                         $rows[$fixtureId] = $row;
@@ -100,6 +102,20 @@ final class ApiFootballProvider implements FootballDataProvider
         }
 
         return $this->teamFixtureCache[$cacheKey];
+    }
+
+    private function cachedTeamSeasonFixtures(int $teamId, int $season, CarbonImmutable $from): array
+    {
+        $cacheKey = 'football:provider-history:v1:team:' . $teamId . ':season:' . $season;
+        $seasonEnd = CarbonImmutable::create($season + 1, 12, 31);
+
+        return Cache::rememberForever($cacheKey, fn () => $this->get('/fixtures', [
+            'team' => $teamId,
+            'season' => $season,
+            'from' => $from->toDateString(),
+            'to' => $seasonEnd->toDateString(),
+            'status' => 'FT',
+        ]));
     }
 
     public function injuries(int $fixtureId): array
