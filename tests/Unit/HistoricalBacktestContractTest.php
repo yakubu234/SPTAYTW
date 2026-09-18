@@ -8,18 +8,16 @@ final class HistoricalBacktestContractTest extends TestCase
     {
         $contract = file_get_contents(__DIR__ . '/../../app/Contracts/Football/FootballDataProvider.php');
         $provider = file_get_contents(__DIR__ . '/../../app/Services/Football/Providers/ApiFootballProvider.php');
+        $store = file_get_contents(__DIR__ . '/../../app/Services/Football/HistoricalFixtureStore.php');
         $team = file_get_contents(__DIR__ . '/../../app/Services/Football/TeamGoalEvidenceBuilder.php');
         $match = file_get_contents(__DIR__ . '/../../app/Services/Football/MatchEvidenceBuilder.php');
 
         $this->assertStringContainsString('teamFixturesBefore', $contract);
-        $this->assertStringContainsString('cachedTeamSeasonFixtures($teamId, $season, $from)', $provider);
+        $this->assertStringContainsString('historyStats', $contract);
+        $this->assertStringContainsString('historyStore->hasSeason', $provider);
         $this->assertStringContainsString("'season' => \$season", $provider);
-        $this->assertStringContainsString("'from' => \$from->toDateString()", $provider);
-        $this->assertStringContainsString("'to' => \$seasonEnd->toDateString()", $provider);
-        $this->assertStringContainsString('CarbonImmutable::parse($fixtureDate)->gte($to)', $provider);
-        $this->assertStringContainsString("\$payload['errors']", $provider);
-        $this->assertStringContainsString('array_slice($rows, 0, max(1, $last))', $provider);
-        $this->assertStringNotContainsString("'last' => \$last", substr($provider, strpos($provider, 'public function teamFixturesBefore')));
+        $this->assertStringContainsString("'status' => 'FT'", $provider);
+        $this->assertStringContainsString("where('kickoff_at', '<', \$before)", $store);
         $this->assertStringContainsString('teamFixturesBefore', $team);
         $this->assertStringContainsString('teamFixturesBefore', $match);
     }
@@ -34,6 +32,8 @@ final class HistoricalBacktestContractTest extends TestCase
         $this->assertStringContainsString("whereNotNull('home_goals')", $command);
         $this->assertStringContainsString("whereNotNull('away_goals')", $command);
         $this->assertStringContainsString("\$failed = true", $command);
+        $this->assertStringContainsString('Local history hits', $command);
+        $this->assertStringContainsString('Provider requests', $command);
         $this->assertStringContainsString('return $failed ? self::FAILURE : self::SUCCESS;', $command);
     }
 
