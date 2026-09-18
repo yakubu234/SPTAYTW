@@ -12,9 +12,11 @@ final class HistoricalBacktestContractTest extends TestCase
         $match = file_get_contents(__DIR__ . '/../../app/Services/Football/MatchEvidenceBuilder.php');
 
         $this->assertStringContainsString('teamFixturesBefore', $contract);
+        $this->assertStringContainsString('cachedTeamSeasonFixtures($teamId, $season, $from)', $provider);
         $this->assertStringContainsString("'season' => \$season", $provider);
         $this->assertStringContainsString("'from' => \$from->toDateString()", $provider);
-        $this->assertStringContainsString("'to' => \$to->toDateString()", $provider);
+        $this->assertStringContainsString("'to' => \$seasonEnd->toDateString()", $provider);
+        $this->assertStringContainsString('CarbonImmutable::parse($fixtureDate)->gte($to)', $provider);
         $this->assertStringContainsString("\$payload['errors']", $provider);
         $this->assertStringContainsString('array_slice($rows, 0, max(1, $last))', $provider);
         $this->assertStringNotContainsString("'last' => \$last", substr($provider, strpos($provider, 'public function teamFixturesBefore')));
