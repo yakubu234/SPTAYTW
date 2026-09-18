@@ -11,7 +11,8 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->bind(FootballDataProvider::class, ApiFootballProvider::class);
+        $this->app->singleton(ApiFootballProvider::class);
+        $this->app->alias(ApiFootballProvider::class, FootballDataProvider::class);
 
         $this->app->singleton(MarketStatusResolver::class, fn () =>
             new MarketStatusResolver((int) config('football.thresholds.minimum_data_quality', 55))

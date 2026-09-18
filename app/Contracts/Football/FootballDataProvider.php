@@ -8,4 +8,5 @@ interface FootballDataProvider
     public function teamFixtures(int $teamId, int $last = 10): array;
     public function teamFixturesBefore(int $teamId, string $before, int $last = 10): array;
     public function injuries(int $fixtureId): array;
+    public function historyStats(): array;
 }

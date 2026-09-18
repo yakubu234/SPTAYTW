@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Contracts\Football\FootballDataProvider;
 use App\Models\Fixture;
 use App\Services\Football\FixtureAnalysisService;
 use App\Services\Football\FixtureImporter;
@@ -15,7 +16,7 @@ final class HistoricalFootballBacktest extends Command
     protected $signature = 'football:historical-backtest {--from=} {--to=} {--minimum=80} {--quality=70}';
     protected $description = 'Import, analyse and grade a historical date range using only pre-fixture evidence';
 
-    public function handle(FixtureImporter $importer, FixtureAnalysisService $analysis, MarketGrader $grader): int
+    public function handle(FixtureImporter $importer, FixtureAnalysisService $analysis, MarketGrader $grader, FootballDataProvider $provider): int
     {
         if (!$this->option('from') || !$this->option('to')) {
             $this->error('Both --from and --to are required.');
@@ -75,6 +76,18 @@ final class HistoricalFootballBacktest extends Command
         }
 
         $this->table(['Date', 'Imported', 'Completed fixtures', 'Graded analyses', 'Status'], $summary);
+
+        $stats = $provider->historyStats();
+        $this->table(
+            ['Historical evidence', 'Count'],
+            [
+                ['Local history hits', $stats['local_hits'] ?? 0],
+                ['Provider requests', $stats['api_requests'] ?? 0],
+                ['Fixtures fetched', $stats['fixtures_fetched'] ?? 0],
+                ['Fixtures stored', $stats['fixtures_stored'] ?? 0],
+                ['Provider failures', $stats['provider_failures'] ?? 0],
+            ]
+        );
 
         $rows = \App\Models\MarketAnalysis::query()
             ->whereHas('fixture', fn ($q) => $q->whereBetween('kickoff_at', [$from, $to->endOfDay()]))
