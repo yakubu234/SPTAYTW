@@ -22,13 +22,25 @@ final class HistoricalBacktestContractTest extends TestCase
         $this->assertStringContainsString('teamFixturesBefore', $match);
     }
 
-    public function test_historical_backtest_requires_completed_range(): void
+    public function test_historical_backtest_requires_completed_range_and_full_time_fixtures(): void
     {
         $command = file_get_contents(__DIR__ . '/../../app/Console/Commands/HistoricalFootballBacktest.php');
 
         $this->assertStringContainsString('football:historical-backtest', $command);
         $this->assertStringContainsString("\$to->gte(CarbonImmutable::today())", $command);
+        $this->assertStringContainsString("where('status', 'FT')", $command);
         $this->assertStringContainsString("whereNotNull('home_goals')", $command);
         $this->assertStringContainsString("whereNotNull('away_goals')", $command);
+        $this->assertStringContainsString("\$failed = true", $command);
+        $this->assertStringContainsString('return $failed ? self::FAILURE : self::SUCCESS;', $command);
+    }
+
+    public function test_rolling_backtest_uses_fixture_kickoff_not_grading_timestamp(): void
+    {
+        $command = file_get_contents(__DIR__ . '/../../app/Console/Commands/BacktestFootballSelections.php');
+
+        $this->assertStringContainsString("whereHas('fixture'", $command);
+        $this->assertStringContainsString("'kickoff_at'", $command);
+        $this->assertStringNotContainsString("where('graded_at'", $command);
     }
 }
