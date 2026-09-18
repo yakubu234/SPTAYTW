@@ -4,6 +4,7 @@ namespace App\Services\Football\Providers;
 
 use App\Contracts\Football\FootballDataProvider;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
