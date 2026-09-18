@@ -38,6 +38,7 @@ final class HistoricalFootballBacktest extends Command
         $minimum = (int) $this->option('minimum');
         $quality = (int) $this->option('quality');
         $summary = [];
+        $failed = false;
 
         for ($date = $from; $date->lte($to); $date = $date->addDay()) {
             $day = $date->toDateString();
@@ -47,6 +48,7 @@ final class HistoricalFootballBacktest extends Command
                 $imported = $importer->importDate($day);
                 $fixtures = Fixture::with(['homeTeam', 'awayTeam', 'competition'])
                     ->whereDate('kickoff_at', $day)
+                    ->where('status', 'FT')
                     ->whereNotNull('home_goals')
                     ->whereNotNull('away_goals')
                     ->get();
@@ -65,6 +67,7 @@ final class HistoricalFootballBacktest extends Command
 
                 $summary[] = [$day, $imported, $fixtures->count(), $graded, 'OK'];
             } catch (Throwable $e) {
+                $failed = true;
                 $summary[] = [$day, 0, 0, 0, 'FAILED'];
                 $this->error($day . ': ' . $e->getMessage());
                 break;
@@ -91,6 +94,6 @@ final class HistoricalFootballBacktest extends Command
             ->all();
 
         $this->table(['Market', 'Score band', 'N', 'Won', 'Lost', 'Observed %', 'Sample'], $rows);
-        return self::SUCCESS;
+        return $failed ? self::FAILURE : self::SUCCESS;
     }
 }
