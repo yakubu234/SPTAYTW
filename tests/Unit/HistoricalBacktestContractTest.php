@@ -37,6 +37,24 @@ final class HistoricalBacktestContractTest extends TestCase
         $this->assertStringContainsString('return $failed ? self::FAILURE : self::SUCCESS;', $command);
     }
 
+    public function test_historical_backtest_reuses_local_target_fixtures_before_importing(): void
+    {
+        $command = file_get_contents(__DIR__ . '/../../app/Console/Commands/HistoricalFootballBacktest.php');
+
+        $localLookup = strpos($command, '$fixtures = $this->completedFixturesForDate($day);');
+        $emptyCheck = strpos($command, 'if ($fixtures->isEmpty())');
+        $providerImport = strpos($command, '$imported = $importer->importDate($day);');
+
+        $this->assertNotFalse($localLookup);
+        $this->assertNotFalse($emptyCheck);
+        $this->assertNotFalse($providerImport);
+        $this->assertLessThan($emptyCheck, $localLookup);
+        $this->assertLessThan($providerImport, $emptyCheck);
+        $this->assertStringContainsString("'LOCAL'", $command);
+        $this->assertStringContainsString("'API'", $command);
+        $this->assertStringContainsString("'Target source'", $command);
+    }
+
     public function test_rolling_backtest_uses_fixture_kickoff_not_grading_timestamp(): void
     {
         $command = file_get_contents(__DIR__ . '/../../app/Console/Commands/BacktestFootballSelections.php');
