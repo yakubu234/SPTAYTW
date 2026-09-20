@@ -46,13 +46,15 @@ final class HistoricalFootballBacktest extends Command
             $this->info('Backtesting ' . $day . '...');
 
             try {
-                $imported = $importer->importDate($day);
-                $fixtures = Fixture::with(['homeTeam', 'awayTeam', 'competition'])
-                    ->whereDate('kickoff_at', $day)
-                    ->where('status', 'FT')
-                    ->whereNotNull('home_goals')
-                    ->whereNotNull('away_goals')
-                    ->get();
+                $fixtures = $this->completedFixturesForDate($day);
+                $source = 'LOCAL';
+                $imported = 0;
+
+                if ($fixtures->isEmpty()) {
+                    $imported = $importer->importDate($day);
+                    $source = 'API';
+                    $fixtures = $this->completedFixturesForDate($day);
+                }
 
                 $graded = 0;
                 foreach ($fixtures as $fixture) {
@@ -66,16 +68,16 @@ final class HistoricalFootballBacktest extends Command
                     }
                 }
 
-                $summary[] = [$day, $imported, $fixtures->count(), $graded, 'OK'];
+                $summary[] = [$day, $source, $imported, $fixtures->count(), $graded, 'OK'];
             } catch (Throwable $e) {
                 $failed = true;
-                $summary[] = [$day, 0, 0, 0, 'FAILED'];
+                $summary[] = [$day, 'FAILED', 0, 0, 0, 'FAILED'];
                 $this->error($day . ': ' . $e->getMessage());
                 break;
             }
         }
 
-        $this->table(['Date', 'Imported', 'Completed fixtures', 'Graded analyses', 'Status'], $summary);
+        $this->table(['Date', 'Target source', 'Imported', 'Completed fixtures', 'Graded analyses', 'Status'], $summary);
 
         $stats = $provider->historyStats();
         $this->table(
@@ -108,5 +110,15 @@ final class HistoricalFootballBacktest extends Command
 
         $this->table(['Market', 'Score band', 'N', 'Won', 'Lost', 'Observed %', 'Sample'], $rows);
         return $failed ? self::FAILURE : self::SUCCESS;
+    }
+
+    private function completedFixturesForDate(string $day)
+    {
+        return Fixture::with(['homeTeam', 'awayTeam', 'competition'])
+            ->whereDate('kickoff_at', $day)
+            ->where('status', 'FT')
+            ->whereNotNull('home_goals')
+            ->whereNotNull('away_goals')
+            ->get();
     }
 }
