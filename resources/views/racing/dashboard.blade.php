@@ -1,0 +1,10 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Horse Racing Analysis</title><style>
+body{font-family:Arial,sans-serif;background:#f5f7fa;color:#17202a;margin:0}.wrap{max-width:1200px;margin:auto;padding:24px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px}.card{background:#fff;border:1px solid #e5e9ef;border-radius:10px;padding:18px;margin:14px 0}.race{display:grid;grid-template-columns:1.2fr 2fr auto;gap:18px;align-items:center}.muted{color:#6b7280}.badge{padding:6px 9px;border-radius:14px;background:#eef2f7;font-size:12px}.strong_qualified{background:#d1fae5}.qualified{background:#dcfce7}.skip{background:#fee2e2}.watch{background:#fef3c7}a{color:#0f5fa8;text-decoration:none}@media(max-width:720px){.race{grid-template-columns:1fr}.top{align-items:flex-start;flex-direction:column}}
+</style></head><body><div class="wrap"><div class="top"><div><h1>Horse Racing</h1><div class="muted">Evidence-led screening — {{ $date }}</div></div><a href="{{ route('football.dashboard') }}">Football dashboard</a></div>
+<form class="card"><input type="date" name="date" value="{{ $date }}"><button>View</button></form>
+@forelse($races as $race) @php($pick=$best[$race->id]??null)
+<div class="card race"><div><strong>{{ $race->off_time->format('H:i') }} · {{ $race->meeting->course }}</strong><div class="muted">{{ $race->name }} · {{ $race->field_size }} runners</div></div>
+<div>@if($pick)<strong>{{ $pick->runner->horse }}</strong><div class="muted">Win {{ number_format($pick->win_probability,1) }}% · Place {{ number_format($pick->place_probability,1) }}% · Fair odds {{ number_format($pick->fair_odds,2) }}</div>@else<span class="muted">Run racing:analyse for this date</span>@endif</div>
+<div>@if($pick)<span class="badge {{ $pick->status }}">{{ strtoupper(str_replace('_',' ',$pick->status)) }} · Race {{ $pick->race_confidence }}</span>@endif</div></div>
+@empty<div class="card">No races imported for this date.</div>@endforelse
+</div></body></html>
