@@ -37,11 +37,8 @@ class EnrichRacing extends Command
         foreach ($runners as $runner) {
             try {
                 $summary = $service->enrichRunner($runner, $date);
-                cache()->put(
-                    "racing:evidence:{$runner->race_id}:{$runner->id}",
-                    $summary,
-                    now()->addHours((int) config('racing.enrichment.cache_hours', 12))
-                );
+                $runner->historical_evidence = $summary;
+                $runner->save();
                 $ok++;
             } catch (Throwable $e) {
                 $failed++;
