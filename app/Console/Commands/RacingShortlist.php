@@ -30,6 +30,10 @@ class RacingShortlist extends Command
                 $race->off_time->format('H:i'), $race->meeting->course, $a->runner->horse,
                 strtoupper(str_replace('_',' ',$a->status)), $a->score, $a->data_quality, $a->race_confidence
             ));
+            $this->line(sprintf('Form: recent %.1f | completion %.0f%% | non-finishes %d | model win %.1f%% | top-3 %.1f%%',
+                (float)($e['recent_form_score']??0), ((float)($e['completion_rate']??0))*100,
+                (int)($e['non_finishes']??0), (float)$a->win_probability, (float)$a->place_probability
+            ));
             $runs=collect($e['recent_runs'] ?? []);
             if ($runs->isEmpty()) {
                 $this->line('Recent-run detail not stored yet. Run racing:enrich for this date, then racing:analyse.');
