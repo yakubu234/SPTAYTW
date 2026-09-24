@@ -7,8 +7,13 @@ class RacingAnalysisService {
         $runners=$race->runners->where('non_runner',false)->values(); if($runners->count()<2) return 0;
         $raw=$runners->mapWithKeys(fn($r)=>[$r->id=>$this->rawScore($r)]); $sum=max(0.001,$raw->sum());
         $probs=$raw->map(fn($v)=>$v/$sum); $sorted=$probs->sortDesc()->values();
-        $separation=($sorted[0]??0)-($sorted[1]??0);
-        $confidence=$this->raceConfidence($separation,$runners->count());
+        $top=(float)($sorted[0]??0); $second=(float)($sorted[1]??0);
+        $separation=$top-$second;
+        // Relative separation is meaningful across different field sizes.
+        // The previous absolute 6/12/22 percentage-point gaps made virtually
+        // every normal multi-runner race confidence D.
+        $relativeSeparation=$top>0 ? $separation/$top : 0;
+        $confidence=$this->raceConfidence($relativeSeparation,$runners->count());
         foreach($runners as $r){
             $evidence=$this->evidence($r);
             $win=$probs[$r->id]; $place=min(.97,$win*1.65 + .08);
@@ -46,9 +51,14 @@ class RacingAnalysisService {
         $history=min(1,((int)($e['rated_history_runs']??0))/5);
         return (int)round((($present/count($base))*.65+$history*.35)*100);
     }
-    private function raceConfidence(float $gap,int $field): string {
+    private function raceConfidence(float $relativeGap,int $field): string {
         if($field>config('racing.thresholds.maximum_field_size',18)) return 'D';
-        return match(true){$gap>=.22=>'A',$gap>=.12=>'B',$gap>=.06=>'C',default=>'D'};
+        return match(true){
+            $relativeGap>=.30=>'A',
+            $relativeGap>=.20=>'B',
+            $relativeGap>=.10=>'C',
+            default=>'D'
+        };
     }
     private function status(string $confidence,int $quality,int $score,?float $edge,array $e): string {
         if((int)($e['rated_history_runs']??0)<3) return 'skip';
