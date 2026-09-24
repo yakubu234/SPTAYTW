@@ -9,10 +9,13 @@ use Throwable;
 
 class RacingEnrichmentService
 {
+    private ?string $currentHorseId = null;
+
     public function __construct(private RacingApiClient $api) {}
 
     public function enrichRunner(RacingRunner $runner, string $raceDate): array
     {
+        $this->currentHorseId = (string) $runner->provider_id;
         $days = (int) config('racing.enrichment.history_days', 730);
         $limit = (int) config('racing.enrichment.history_limit', 10);
         $hours = (int) config('racing.enrichment.cache_hours', 12);
@@ -51,8 +54,19 @@ class RacingEnrichmentService
         $rows = array_slice($historyPayload['results'] ?? [], 0, $limit);
         $finishes = [];
 
-        foreach ($rows as $row) {
-            $position = $this->position($row['position'] ?? $row['pos'] ?? $row['finish_position'] ?? null);
+        foreach ($rows as $raceResult) {
+            // The Basic horse-history endpoint returns races; the horse's finish
+            // is nested inside each raceResult.runners[].
+            $runnerResult = collect($raceResult['runners'] ?? [])->first(
+                fn ($item) => (string) ($item['horse_id'] ?? '') !== ''
+                    && (string) ($item['horse_id'] ?? '') === (string) ($this->currentHorseId ?? '')
+            );
+
+            if (!$runnerResult) {
+                continue;
+            }
+
+            $position = $this->position($runnerResult['position'] ?? null);
             if ($position !== null) {
                 $finishes[] = $position;
             }
