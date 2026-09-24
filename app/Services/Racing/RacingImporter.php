@@ -24,8 +24,8 @@ class RacingImporter {
                 RacingRunner::updateOrCreate(
                     ['race_id'=>$race->id,'provider_id'=>(string)($runner['horse_id'] ?? $runner['id'] ?? sha1((string)($runner['horse'] ?? $runner['name'] ?? 'unknown')))],
                     ['horse'=>$runner['horse'] ?? $runner['name'] ?? 'Unknown','jockey'=>$runner['jockey'] ?? null,'trainer'=>$runner['trainer'] ?? null,
-                     'draw'=>$this->nullableNumber($runner['draw'] ?? null),'weight_lbs'=>$this->nullableNumber($runner['weight_lbs'] ?? null),
-                     'official_rating'=>$this->nullableNumber($runner['official_rating'] ?? $runner['or'] ?? null),
+                     'draw'=>$this->nullableNumber($runner['draw'] ?? null),'weight_lbs'=>$this->nullableNumber($runner['weight_lbs'] ?? $runner['lbs'] ?? null),
+                     'official_rating'=>$this->nullableNumber($runner['official_rating'] ?? $runner['ofr'] ?? $runner['or'] ?? null),
                      'speed_rating'=>$this->nullableNumber($runner['speed_rating'] ?? null),
                      'performance_rating'=>$this->nullableNumber($runner['performance_rating'] ?? null),
                      'decimal_odds'=>$this->nullableNumber($runner['decimal_odds'] ?? null),
