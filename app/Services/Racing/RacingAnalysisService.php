@@ -49,7 +49,14 @@ class RacingAnalysisService {
         $runs=(int)($e['rated_history_runs']??0); if($runs<3) return 50;
         $top3=(float)($e['top3_rate']??0); $win=(float)($e['win_rate']??0);
         $avg=$e['average_finish']??null; $finish=$avg!==null?max(0,100-(((float)$avg-1)*12)):50;
-        return min(100,max(0,($top3*100*.45)+($win*100*.25)+($finish*.30)));
+        $completion=(float)($e['completion_rate']??1);
+        $recent=$e['recent_form_score']??null;
+        $recent=$recent!==null?(float)$recent:$finish;
+        // Recency and completion matter: a PU/F/UR/non-finish must not disappear
+        // from form simply because it has no numeric finishing position.
+        return min(100,max(0,
+            ($top3*100*.25)+($win*100*.15)+($finish*.15)+($recent*.30)+($completion*100*.15)
+        ));
     }
     private function quality(RacingRunner $r,array $e): int {
         $base=[$r->official_rating,$r->speed_rating,$r->performance_rating,$r->jockey,$r->trainer];

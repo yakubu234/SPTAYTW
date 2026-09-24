@@ -82,11 +82,29 @@ class RacingEnrichmentService
             ];
         }
 
-        $runs = count($rows);
+        $runs = count($recentRuns);
         $ratedRuns = count($finishes);
+        $nonFinishes = max(0, $runs - $ratedRuns);
         $wins = count(array_filter($finishes, fn ($p) => $p === 1));
         $top3 = count(array_filter($finishes, fn ($p) => $p <= 3));
         $avgFinish = $ratedRuns ? array_sum($finishes) / $ratedRuns : null;
+        $completionRate = $runs ? $ratedRuns / $runs : null;
+
+        // Recent form should not treat PU/F/UR/etc. as if the run never happened.
+        // Score each run by finishing percentile; a non-finish scores zero.
+        $recentFormWeighted = 0.0;
+        $recentWeight = 0.0;
+        foreach (array_slice($recentRuns, 0, 5) as $index => $run) {
+            $weight = 5 - $index;
+            $field = max(2, (int) ($run['field_size'] ?? 0));
+            $position = $run['position'] ?? null;
+            $runScore = $position !== null
+                ? max(0, min(100, (($field - (int)$position) / ($field - 1)) * 100))
+                : 0;
+            $recentFormWeighted += $runScore * $weight;
+            $recentWeight += $weight;
+        }
+        $recentFormScore = $recentWeight > 0 ? $recentFormWeighted / $recentWeight : null;
 
         return [
             'history_runs' => $runs,
@@ -96,6 +114,9 @@ class RacingEnrichmentService
             'win_rate' => $ratedRuns ? round($wins / $ratedRuns, 4) : null,
             'top3_rate' => $ratedRuns ? round($top3 / $ratedRuns, 4) : null,
             'average_finish' => $avgFinish !== null ? round($avgFinish, 2) : null,
+            'non_finishes' => $nonFinishes,
+            'completion_rate' => $completionRate !== null ? round($completionRate, 4) : null,
+            'recent_form_score' => $recentFormScore !== null ? round($recentFormScore, 2) : null,
             'recent_runs' => $recentRuns,
             'distance_total_runs' => is_numeric($distancePayload['total_runs'] ?? null)
                 ? (int) $distancePayload['total_runs'] : null,
