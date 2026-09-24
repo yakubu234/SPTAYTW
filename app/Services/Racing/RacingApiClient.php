@@ -42,9 +42,12 @@ class RacingApiClient
             self::$lastRequestAt = microtime(true);
             $status = $e->response?->status();
             $detail = $e->response?->json('detail') ?: $e->getMessage();
+            if (is_array($detail) || is_object($detail)) {
+                $detail = json_encode($detail, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
 
             throw new RuntimeException(
-                "The Racing API request failed ({$status}) for {$path}: {$detail}",
+                "The Racing API request failed ({$status}) for {$path}: ".(string) $detail,
                 previous: $e
             );
         }
