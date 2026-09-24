@@ -24,7 +24,8 @@ class InspectRacingData extends Command
             ['Speed rating populated', $runners->whereNotNull('speed_rating')->count()],
             ['Performance rating populated', $runners->whereNotNull('performance_rating')->count()],
             ['Decimal odds populated', $runners->whereNotNull('decimal_odds')->count()],
-            ['Evidence cache populated', $runners->filter(fn($r)=>cache()->has("racing:evidence:{$r->race_id}:{$r->id}"))->count()],
+            ['Historical evidence populated', $runners->whereNotNull('historical_evidence')->count()],
+            ['3+ rated history runs', $runners->filter(fn($r)=>(int) data_get($r->historical_evidence, 'rated_history_runs', 0) >= 3)->count()],
         ]);
 
         if (!$this->option('api')) return self::SUCCESS;
