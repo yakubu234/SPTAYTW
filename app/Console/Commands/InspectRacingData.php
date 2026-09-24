@@ -43,6 +43,35 @@ class InspectRacingData extends Command
             ]);
         }
 
+        $shortlist = $analyses
+            ->filter(fn($a) => in_array($a->status, ['strong','candidate','strong_qualified','qualified'], true))
+            ->sortByDesc('score')
+            ->values();
+
+        if ($shortlist->isNotEmpty()) {
+            $this->newLine();
+            $this->info('Prediction shortlist');
+            $this->table(
+                ['Time','Course','Horse','Status','Score','Quality','Conf','Win %','Top 3 %','History','Avg finish'],
+                $shortlist->map(function($a) {
+                    $race=$a->race; $e=$a->evidence ?? [];
+                    return [
+                        optional($race->off_time)->format('H:i'),
+                        optional($race->meeting)->course,
+                        optional($a->runner)->horse,
+                        strtoupper(str_replace('_',' ',$a->status)),
+                        $a->score,
+                        $a->data_quality,
+                        $a->race_confidence,
+                        number_format((float)$a->win_probability,1),
+                        number_format((float)$a->place_probability,1),
+                        (int)($e['rated_history_runs']??0),
+                        isset($e['average_finish']) ? number_format((float)$e['average_finish'],1) : '-',
+                    ];
+                })->all()
+            );
+        }
+
         if (!$this->option('api')) return self::SUCCESS;
 
         $payload = $api->racecards($date);
