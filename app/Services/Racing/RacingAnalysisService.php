@@ -7,6 +7,7 @@ class RacingAnalysisService {
         $runners=$race->runners->where('non_runner',false)->values(); if($runners->count()<2) return 0;
         $raw=$runners->mapWithKeys(fn($r)=>[$r->id=>$this->rawScore($r)]); $sum=max(0.001,$raw->sum());
         $probs=$raw->map(fn($v)=>$v/$sum); $sorted=$probs->sortDesc()->values();
+        $rawMin=(float)$raw->min(); $rawMax=(float)$raw->max(); $rawRange=max(0.001,$rawMax-$rawMin);
         $top=(float)($sorted[0]??0); $second=(float)($sorted[1]??0);
         $separation=$top-$second;
         // Relative separation is meaningful across different field sizes.
@@ -21,13 +22,18 @@ class RacingAnalysisService {
             $edge=$market!==null ? ($win-$market)*100 : null;
             $quality=$this->quality($r,$evidence);
             $form=$this->formScore($evidence);
-            $score=(int)round(($win*100*.45)+($quality*.30)+($form*.25));
+            // Score predictive strength on a 0-100 scale. Win probability is
+            // field-size dependent, so using it directly made a 72 threshold
+            // mathematically unreachable in ordinary races. RelativeStrength
+            // measures the runner against today's field instead.
+            $relativeStrength=(($raw[$r->id]-$rawMin)/$rawRange)*100;
+            $score=(int)round(($relativeStrength*.45)+($quality*.30)+($form*.25));
             $status=$this->status($confidence,$quality,$score,$edge,$evidence);
             RacingAnalysis::updateOrCreate(['race_id'=>$race->id,'runner_id'=>$r->id],[
                 'win_probability'=>round($win*100,3),'place_probability'=>round($place*100,3),'fair_odds'=>round(1/$win,3),
                 'market_probability'=>$market!==null?round($market*100,3):null,'edge_points'=>$edge!==null?round($edge,3):null,
                 'score'=>$score,'data_quality'=>$quality,'race_confidence'=>$confidence,'status'=>$status,
-                'evidence'=>array_merge(['official_rating'=>$r->official_rating,'speed_rating'=>$r->speed_rating,'performance_rating'=>$r->performance_rating,'field_size'=>$runners->count()],$evidence)
+                'evidence'=>array_merge(['official_rating'=>$r->official_rating,'speed_rating'=>$r->speed_rating,'performance_rating'=>$r->performance_rating,'field_size'=>$runners->count(),'relative_strength'=>round($relativeStrength,2)],$evidence)
             ]);
         } return $runners->count();
     }

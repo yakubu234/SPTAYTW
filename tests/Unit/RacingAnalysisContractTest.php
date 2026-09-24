@@ -19,5 +19,7 @@ class RacingAnalysisContractTest extends TestCase
         $this->assertStringContainsString("return 'candidate';", $source);
         $this->assertStringContainsString("&&\$edge>=2) return 'strong_qualified'", $source);
         $this->assertStringContainsString("&&\$edge>=0) return 'qualified'", $source);
+        $this->assertStringContainsString('$relativeStrength', $source);
+        $this->assertStringNotContainsString('(\$win*100*.45)', $source);
     }
 }
