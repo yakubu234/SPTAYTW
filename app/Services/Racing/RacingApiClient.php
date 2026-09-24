@@ -71,6 +71,11 @@ class RacingApiClient
         return $this->request('racecards/'.rawurlencode($horseId).'/results', $query, 5);
     }
 
+    public function racecardHorseResultsSample(string $horseId, array $query = []): array
+    {
+        return $this->racecardHorseResults($horseId, $query);
+    }
+
     public function horseDistanceTimes(string $horseId, array $query = []): array
     {
         return $this->request('horses/'.rawurlencode($horseId).'/analysis/distance-times', $query, 5);
