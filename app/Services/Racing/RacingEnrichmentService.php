@@ -9,14 +9,11 @@ use Throwable;
 
 class RacingEnrichmentService
 {
-    private ?string $currentHorseId = null;
-
-    public function __construct(private RacingApiClient $api) {}
+     public function __construct(private RacingApiClient $api) {}
 
     public function enrichRunner(RacingRunner $runner, string $raceDate): array
     {
-        $this->currentHorseId = (string) $runner->provider_id;
-        $days = (int) config('racing.enrichment.history_days', 730);
+         $days = (int) config('racing.enrichment.history_days', 730);
         $limit = (int) config('racing.enrichment.history_limit', 10);
         $hours = (int) config('racing.enrichment.cache_hours', 12);
         $end = Carbon::parse($raceDate)->subDay()->toDateString();
@@ -46,20 +43,21 @@ class RacingEnrichmentService
             // History remains usable if optional distance analysis is unavailable.
         }
 
-        return $this->summarise($history, $distance, $limit);
+        return $this->summarise($history, $distance, $limit, (string) $runner->provider_id);
     }
 
-    private function summarise(array $historyPayload, array $distancePayload, int $limit): array
+    private function summarise(array $historyPayload, array $distancePayload, int $limit, string $horseId): array
     {
         $rows = array_slice($historyPayload['results'] ?? [], 0, $limit);
         $finishes = [];
+        $recentRuns = [];
 
         foreach ($rows as $raceResult) {
             // The Basic horse-history endpoint returns races; the horse's finish
             // is nested inside each raceResult.runners[].
             $runnerResult = collect($raceResult['runners'] ?? [])->first(
                 fn ($item) => (string) ($item['horse_id'] ?? '') !== ''
-                    && (string) ($item['horse_id'] ?? '') === (string) ($this->currentHorseId ?? '')
+                    && (string) ($item['horse_id'] ?? '') === $horseId
             );
 
             if (!$runnerResult) {
@@ -70,6 +68,18 @@ class RacingEnrichmentService
             if ($position !== null) {
                 $finishes[] = $position;
             }
+
+            $recentRuns[] = [
+                'date' => $raceResult['date'] ?? null,
+                'course' => $raceResult['course'] ?? null,
+                'position' => $position,
+                'field_size' => count($raceResult['runners'] ?? []),
+                'distance_yards' => is_numeric($raceResult['dist_y'] ?? null) ? (int) $raceResult['dist_y'] : null,
+                'going' => $raceResult['going'] ?? null,
+                'surface' => $raceResult['surface'] ?? null,
+                'class' => $raceResult['class'] ?? null,
+                'starting_price' => is_numeric($runnerResult['sp_dec'] ?? null) ? (float) $runnerResult['sp_dec'] : null,
+            ];
         }
 
         $runs = count($rows);
@@ -86,6 +96,7 @@ class RacingEnrichmentService
             'win_rate' => $ratedRuns ? round($wins / $ratedRuns, 4) : null,
             'top3_rate' => $ratedRuns ? round($top3 / $ratedRuns, 4) : null,
             'average_finish' => $avgFinish !== null ? round($avgFinish, 2) : null,
+            'recent_runs' => $recentRuns,
             'distance_total_runs' => is_numeric($distancePayload['total_runs'] ?? null)
                 ? (int) $distancePayload['total_runs'] : null,
             'distance_bands' => count($distancePayload['distances'] ?? []),
