@@ -90,6 +90,6 @@ class RacingApiClient
             throw new RuntimeException('The Racing API Basic results endpoint exposes today only.');
         }
 
-        return $this->request('results/today', ['limit' => 500], 5);
+        return $this->request('results/today', ['limit' => 100], 5);
     }
 }
