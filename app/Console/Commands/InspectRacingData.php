@@ -28,6 +28,21 @@ class InspectRacingData extends Command
             ['3+ rated history runs', $runners->filter(fn($r)=>(int) data_get($r->historical_evidence, 'rated_history_runs', 0) >= 3)->count()],
         ]);
 
+        $analyses = $races->flatMap->analyses;
+        if ($analyses->isNotEmpty()) {
+            $this->newLine();
+            $this->table(['Analysis diagnostic','Value'], [
+                ['Confidence A', $analyses->where('race_confidence','A')->count()],
+                ['Confidence B', $analyses->where('race_confidence','B')->count()],
+                ['Confidence C', $analyses->where('race_confidence','C')->count()],
+                ['Confidence D', $analyses->where('race_confidence','D')->count()],
+                ['Score >= 72', $analyses->where('score','>=',72)->count()],
+                ['Score >= 82', $analyses->where('score','>=',82)->count()],
+                ['Quality >= 55', $analyses->where('data_quality','>=',55)->count()],
+                ['Maximum score', $analyses->max('score')],
+            ]);
+        }
+
         if (!$this->option('api')) return self::SUCCESS;
 
         $payload = $api->racecards($date);
