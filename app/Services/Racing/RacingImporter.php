@@ -16,7 +16,7 @@ class RacingImporter {
             );
             $race=RacingRace::updateOrCreate(
                 ['provider_id'=>(string)($row['race_id'] ?? $row['id'] ?? sha1(json_encode([$date,$course,$row['off_time'] ?? null,$row['race_name'] ?? null])))],
-                ['meeting_id'=>$meeting->id,'name'=>$row['race_name'] ?? $row['name'] ?? 'Race','off_time'=>$this->offTime($date,$row['off_time'] ?? $row['off'] ?? null),
+                ['meeting_id'=>$meeting->id,'name'=>$row['race_name'] ?? $row['name'] ?? 'Race','off_time'=>$this->offTime($date,$row['off_dt'] ?? $row['off_time'] ?? $row['off'] ?? null),
                  'distance_yards'=>$this->nullableNumber($row['distance_yards'] ?? $row['dist_y'] ?? null),'race_class'=>$row['race_class'] ?? $row['class'] ?? null,
                  'surface'=>$row['surface'] ?? null,'status'=>$row['status'] ?? 'scheduled','field_size'=>count($row['runners'] ?? [])]
             ); $raceCount++;
