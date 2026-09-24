@@ -7,8 +7,13 @@ return [
         'password' => env('RACING_API_PASSWORD'),
         'timeout' => 20,
     ],
+    'enrichment' => [
+        'history_limit' => 10,
+        'history_days' => 730,
+        'cache_hours' => 12,
+    ],
     'thresholds' => [
-        'minimum_data_quality' => 45,
+        'minimum_data_quality' => 55,
         'qualified' => 72,
         'strong' => 82,
         'maximum_field_size' => 18,
