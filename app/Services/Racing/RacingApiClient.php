@@ -2,6 +2,7 @@
 
 namespace App\Services\Racing;
 
+use Carbon\Carbon;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
@@ -41,11 +42,43 @@ class RacingApiClient
 
     public function racecards(string $date): array
     {
-        return $this->request('racecards/standard', ['date' => $date]);
+        $requested = Carbon::parse($date)->startOfDay();
+        $today = now()->startOfDay();
+
+        if ($requested->equalTo($today)) {
+            $day = 'today';
+        } elseif ($requested->equalTo($today->copy()->addDay())) {
+            $day = 'tomorrow';
+        } else {
+            throw new RuntimeException(
+                'The Racing API Basic racecards endpoint supports today and tomorrow only.'
+            );
+        }
+
+        return $this->request('racecards/basic', [
+            'day' => $day,
+            'limit' => 500,
+        ]);
+    }
+
+    public function racecardHorseResults(string $horseId, array $query = []): array
+    {
+        return $this->request('racecards/'.rawurlencode($horseId).'/results', $query);
+    }
+
+    public function horseDistanceTimes(string $horseId, array $query = []): array
+    {
+        return $this->request('horses/'.rawurlencode($horseId).'/analysis/distance-times', $query);
     }
 
     public function results(string $date): array
     {
-        return $this->request('results', ['date' => $date]);
+        if (!Carbon::parse($date)->isToday()) {
+            throw new RuntimeException(
+                'The Racing API Basic results endpoint exposes today only. Grade the race day on the same date.'
+            );
+        }
+
+        return $this->request('results/today', ['limit' => 500]);
     }
 }
