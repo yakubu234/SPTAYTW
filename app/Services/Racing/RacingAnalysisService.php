@@ -75,6 +75,8 @@ class RacingAnalysisService {
     }
     private function status(string $confidence,int $quality,int $score,?float $edge,array $e): string {
         if((int)($e['rated_history_runs']??0)<3) return 'skip';
+        $recentForm=$e['recent_form_score']??null;
+        if($recentForm!==null && (float)$recentForm<config('racing.thresholds.minimum_recent_form',30)) return 'skip';
         if($quality<config('racing.thresholds.minimum_data_quality',55)||in_array($confidence,['C','D'],true)) return 'skip';
         // Basic does not expose today's odds. In that case classify predictive
         // strength only; bookmaker-value qualification remains unavailable.
