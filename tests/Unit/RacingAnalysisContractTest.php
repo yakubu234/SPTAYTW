@@ -12,7 +12,12 @@ class RacingAnalysisContractTest extends TestCase
         $this->assertStringContainsString("in_array(\$confidence,['C','D'],true)", $source);
         $this->assertStringContainsString('minimum_data_quality', $source);
         $this->assertStringContainsString("rated_history_runs']??0)<3", $source);
-        $this->assertStringContainsString('$edge!==null&&$edge>=2', $source);
-        $this->assertStringContainsString('$edge!==null&&$edge>=0', $source);
+
+        // Market-value qualification still requires a known edge.
+        $this->assertStringContainsString('if($edge===null)', $source);
+        $this->assertStringContainsString("return 'strong';", $source);
+        $this->assertStringContainsString("return 'candidate';", $source);
+        $this->assertStringContainsString("&&\$edge>=2) return 'strong_qualified'", $source);
+        $this->assertStringContainsString("&&\$edge>=0) return 'qualified'", $source);
     }
 }
