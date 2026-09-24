@@ -53,8 +53,15 @@ class RacingAnalysisService {
     private function status(string $confidence,int $quality,int $score,?float $edge,array $e): string {
         if((int)($e['rated_history_runs']??0)<3) return 'skip';
         if($quality<config('racing.thresholds.minimum_data_quality',55)||in_array($confidence,['C','D'],true)) return 'skip';
-        if($score>=config('racing.thresholds.strong',82)&&$edge!==null&&$edge>=2) return 'strong_qualified';
-        if($score>=config('racing.thresholds.qualified',72)&&$edge!==null&&$edge>=0) return 'qualified';
+        // Basic does not expose today's odds. In that case classify predictive
+        // strength only; bookmaker-value qualification remains unavailable.
+        if($edge===null){
+            if($score>=config('racing.thresholds.strong',82)) return 'strong';
+            if($score>=config('racing.thresholds.qualified',72)) return 'candidate';
+            return 'watch';
+        }
+        if($score>=config('racing.thresholds.strong',82)&&$edge>=2) return 'strong_qualified';
+        if($score>=config('racing.thresholds.qualified',72)&&$edge>=0) return 'qualified';
         return 'watch';
     }
 }

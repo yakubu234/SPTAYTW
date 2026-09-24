@@ -15,6 +15,8 @@ class AnalyseRacing extends Command {
   $this->table(['Status','Runners'],[
    ['Strong Qualified',(int)($counts['strong_qualified']??0)],
    ['Qualified',(int)($counts['qualified']??0)],
+   ['Strong (prediction only)',(int)($counts['strong']??0)],
+   ['Candidate (prediction only)',(int)($counts['candidate']??0)],
    ['Watch',(int)($counts['watch']??0)],
    ['Skip',(int)($counts['skip']??0)],
   ]);
