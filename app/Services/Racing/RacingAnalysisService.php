@@ -10,35 +10,51 @@ class RacingAnalysisService {
         $separation=($sorted[0]??0)-($sorted[1]??0);
         $confidence=$this->raceConfidence($separation,$runners->count());
         foreach($runners as $r){
+            $evidence=$this->evidence($r);
             $win=$probs[$r->id]; $place=min(.97,$win*1.65 + .08);
             $market=$r->decimal_odds ? 1/(float)$r->decimal_odds : null;
             $edge=$market!==null ? ($win-$market)*100 : null;
-            $quality=$this->quality($r); $score=(int)round(($win*100*.55)+($quality*.45));
-            $status=$this->status($confidence,$quality,$score,$edge);
+            $quality=$this->quality($r,$evidence);
+            $form=$this->formScore($evidence);
+            $score=(int)round(($win*100*.45)+($quality*.30)+($form*.25));
+            $status=$this->status($confidence,$quality,$score,$edge,$evidence);
             RacingAnalysis::updateOrCreate(['race_id'=>$race->id,'runner_id'=>$r->id],[
                 'win_probability'=>round($win*100,3),'place_probability'=>round($place*100,3),'fair_odds'=>round(1/$win,3),
                 'market_probability'=>$market!==null?round($market*100,3):null,'edge_points'=>$edge!==null?round($edge,3):null,
                 'score'=>$score,'data_quality'=>$quality,'race_confidence'=>$confidence,'status'=>$status,
-                'evidence'=>['official_rating'=>$r->official_rating,'speed_rating'=>$r->speed_rating,'performance_rating'=>$r->performance_rating,'field_size'=>$runners->count()]
+                'evidence'=>array_merge(['official_rating'=>$r->official_rating,'speed_rating'=>$r->speed_rating,'performance_rating'=>$r->performance_rating,'field_size'=>$runners->count()],$evidence)
             ]);
         } return $runners->count();
     }
     private function rawScore(RacingRunner $r): float {
         $or=(float)($r->official_rating ?? 50); $speed=(float)($r->speed_rating ?? $or); $perf=(float)($r->performance_rating ?? $or);
-        return max(1,($or*.35)+($speed*.35)+($perf*.30));
+        $form=$this->formScore($this->evidence($r));
+        return max(1,($or*.28)+($speed*.28)+($perf*.24)+($form*.20));
     }
-    private function quality(RacingRunner $r): int {
-        $fields=[$r->official_rating,$r->speed_rating,$r->performance_rating,$r->jockey,$r->trainer,$r->decimal_odds];
-        return (int)round(count(array_filter($fields,fn($v)=>$v!==null&&$v!==''))/count($fields)*100);
+    private function evidence(RacingRunner $r): array {
+        return cache()->get("racing:evidence:{$r->race_id}:{$r->id}",[]);
+    }
+    private function formScore(array $e): float {
+        $runs=(int)($e['rated_history_runs']??0); if($runs<3) return 50;
+        $top3=(float)($e['top3_rate']??0); $win=(float)($e['win_rate']??0);
+        $avg=$e['average_finish']??null; $finish=$avg!==null?max(0,100-(((float)$avg-1)*12)):50;
+        return min(100,max(0,($top3*100*.45)+($win*100*.25)+($finish*.30)));
+    }
+    private function quality(RacingRunner $r,array $e): int {
+        $base=[$r->official_rating,$r->speed_rating,$r->performance_rating,$r->jockey,$r->trainer];
+        $present=count(array_filter($base,fn($v)=>$v!==null&&$v!==''));
+        $history=min(1,((int)($e['rated_history_runs']??0))/5);
+        return (int)round((($present/count($base))*.65+$history*.35)*100);
     }
     private function raceConfidence(float $gap,int $field): string {
         if($field>config('racing.thresholds.maximum_field_size',18)) return 'D';
         return match(true){$gap>=.22=>'A',$gap>=.12=>'B',$gap>=.06=>'C',default=>'D'};
     }
-    private function status(string $confidence,int $quality,int $score,?float $edge): string {
-        if($quality<config('racing.thresholds.minimum_data_quality',45)||in_array($confidence,['C','D'],true)) return 'skip';
-        if($score>=config('racing.thresholds.strong',82)&&($edge===null||$edge>=2)) return 'strong_qualified';
-        if($score>=config('racing.thresholds.qualified',72)&&($edge===null||$edge>=0)) return 'qualified';
+    private function status(string $confidence,int $quality,int $score,?float $edge,array $e): string {
+        if((int)($e['rated_history_runs']??0)<3) return 'skip';
+        if($quality<config('racing.thresholds.minimum_data_quality',55)||in_array($confidence,['C','D'],true)) return 'skip';
+        if($score>=config('racing.thresholds.strong',82)&&$edge!==null&&$edge>=2) return 'strong_qualified';
+        if($score>=config('racing.thresholds.qualified',72)&&$edge!==null&&$edge>=0) return 'qualified';
         return 'watch';
     }
 }
