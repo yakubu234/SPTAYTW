@@ -44,6 +44,18 @@ class InspectRacingData extends Command
         ])->all();
         $this->line('Mapped runner sample: '.json_encode($safe, JSON_UNESCAPED_SLASHES));
 
+        $sampleRunner = $runners->first(fn($r) => !empty($r->provider_id));
+        if ($sampleRunner) {
+            $history = $api->racecardHorseResultsSample($sampleRunner->provider_id, ['limit' => 1]);
+            $historyRow = ($history['results'] ?? [])[0] ?? [];
+            $this->newLine();
+            $this->line('First history result keys: '.implode(', ', array_keys($historyRow)));
+            $this->line('First history result sample: '.json_encode(
+                collect($historyRow)->except(['comment','spotlight','quotes'])->all(),
+                JSON_UNESCAPED_SLASHES
+            ));
+        }
+
         return self::SUCCESS;
     }
 }
