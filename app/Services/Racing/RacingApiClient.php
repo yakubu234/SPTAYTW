@@ -2,7 +2,7 @@
 
 namespace App\Services\Racing;
 
-use Carbon\Carbon;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -18,39 +18,34 @@ class RacingApiClient
             throw new RuntimeException('RACING_API_USERNAME and RACING_API_PASSWORD are required.');
         }
 
-        $response = Http::timeout($cfg['timeout'])
-            ->withBasicAuth($user, $pass)
-            ->get(rtrim($cfg['base_url'], '/').'/'.ltrim($path, '/'), $query);
+        try {
+            $response = Http::timeout($cfg['timeout'])
+                ->retry(2, 500)
+                ->withBasicAuth($user, $pass)
+                ->acceptJson()
+                ->get(rtrim($cfg['base_url'], '/').'/'.ltrim($path, '/'), $query);
 
-        $response->throw();
+            $response->throw();
 
-        return $response->json() ?: [];
+            return $response->json() ?: [];
+        } catch (RequestException $e) {
+            $status = $e->response?->status();
+            $detail = $e->response?->json('detail') ?: $e->getMessage();
+
+            throw new RuntimeException(
+                "The Racing API request failed ({$status}) for {$path}: {$detail}",
+                previous: $e
+            );
+        }
     }
 
     public function racecards(string $date): array
     {
-        $requested = Carbon::parse($date)->startOfDay();
-        $today = now()->startOfDay();
-
-        if ($requested->equalTo($today)) {
-            $day = 'today';
-        } elseif ($requested->equalTo($today->copy()->addDay())) {
-            $day = 'tomorrow';
-        } else {
-            throw new RuntimeException(
-                'The Racing API Free plan only supports today or tomorrow racecards. '
-                .'Use today/tomorrow, or upgrade before requesting arbitrary dates.'
-            );
-        }
-
-        return $this->request('racecards/free', ['day' => $day]);
+        return $this->request('racecards/standard', ['date' => $date]);
     }
 
     public function results(string $date): array
     {
-        throw new RuntimeException(
-            'Historical results grading is disabled on the Free plan. '
-            .'Do not upgrade until the free racecard import has been validated.'
-        );
+        return $this->request('results', ['date' => $date]);
     }
 }
