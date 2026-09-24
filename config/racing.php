@@ -17,5 +17,6 @@ return [
         'qualified' => 72,
         'strong' => 82,
         'maximum_field_size' => 18,
+        'minimum_recent_form' => 30,
     ],
 ];

@@ -11,6 +11,7 @@ class RacingAnalysisContractTest extends TestCase
 
         $this->assertStringContainsString("in_array(\$confidence,['C','D'],true)", $source);
         $this->assertStringContainsString('minimum_data_quality', $source);
+        $this->assertStringContainsString('minimum_recent_form', $source);
         $this->assertStringContainsString("rated_history_runs']??0)<3", $source);
 
         // Market-value qualification still requires a known edge.
