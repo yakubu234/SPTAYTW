@@ -32,7 +32,7 @@ class RacingAnalysisService {
         return max(1,($or*.28)+($speed*.28)+($perf*.24)+($form*.20));
     }
     private function evidence(RacingRunner $r): array {
-        return cache()->get("racing:evidence:{$r->race_id}:{$r->id}",[]);
+        return $r->historical_evidence ?? [];
     }
     private function formScore(array $e): float {
         $runs=(int)($e['rated_history_runs']??0); if($runs<3) return 50;
