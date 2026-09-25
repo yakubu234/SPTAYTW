@@ -49,4 +49,18 @@ final class DoubleChanceAnalyserTest extends TestCase
         $this->assertLessThan($strong->score, $weak->score);
         $this->assertNotEmpty($weak->contradictions);
     }
+
+    public function test_high_score_with_five_venue_matches_is_only_watch(): void
+    {
+        [$home] = (new DoubleChanceAnalyser(new MarketStatusResolver()))->analyse('Home FC', 'Away FC', $this->evidence(5, 1.0, 0.0));
+        $this->assertGreaterThanOrEqual(85, $home->score);
+        $this->assertSame(70, $home->dataQuality);
+        $this->assertSame(AnalysisStatus::WATCH, $home->status);
+    }
+
+    public function test_six_venue_matches_can_qualify_but_cannot_be_strong(): void
+    {
+        [$home] = (new DoubleChanceAnalyser(new MarketStatusResolver()))->analyse('Home FC', 'Away FC', $this->evidence(6, 1.0, 0.0));
+        $this->assertSame(AnalysisStatus::QUALIFIED, $home->status);
+    }
 }

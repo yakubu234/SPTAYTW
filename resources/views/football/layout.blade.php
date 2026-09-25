@@ -9,7 +9,7 @@
     </style>
 </head>
 <body>
-<nav class="nav"><div class="wrap"><div class="brand">Sporty Safe Engine</div><a href="{{ route('football.dashboard') }}">Dashboard</a><a href="{{ route('football.tickets.index') }}">Tickets</a><a href="{{ route('football.performance') }}">Performance</a><a href="{{ route('football.calibration') }}">Calibration</a></div></nav>
+<nav class="nav"><div class="wrap"><div class="brand">Sporty Safe Engine</div><a href="{{ route('football.dashboard') }}">Dashboard</a><a href="{{ route('football.double-chance') }}">Win or Draw</a><a href="{{ route('football.tickets.index') }}">Tickets</a><a href="{{ route('football.performance') }}">Performance</a><a href="{{ route('football.calibration') }}">Calibration</a></div></nav>
 <main class="wrap">
 @if(session('message'))<div class="alert">{{ session('message') }}</div>@endif
 @yield('content')

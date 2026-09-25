@@ -15,6 +15,21 @@ class FootballDashboardController extends Controller {
         $latest=$analyses->groupBy('fixture_id')->map->first()->sortByDesc('score')->values();
         $stats=['fixtures'=>Fixture::whereDate('kickoff_at',$date)->count(),'strong'=>$latest->where('status','strong_qualified')->count(),'qualified'=>$latest->where('status','qualified')->count(),'watch'=>$latest->where('status','watch')->count(),'skip'=>$latest->where('status','skip')->count()]; return view('football.dashboard',compact('date','latest','stats'));
     }
+    public function doubleChance(Request $request){
+        $date=Carbon::parse($request->string('date')->toString() ?: now()->toDateString());
+        $status=$request->string('status')->toString();
+        if(!in_array($status,['','strong_qualified','qualified','watch','skip'],true))$status='';
+        $side=$request->string('side')->toString();
+        if(!in_array($side,['','home_or_draw','away_or_draw'],true))$side='';
+        $base=MarketAnalysis::with(['fixture.competition','fixture.homeTeam','fixture.awayTeam'])
+            ->whereHas('fixture',fn($query)=>$query->whereDate('kickoff_at',$date->toDateString()))
+            ->whereIn('market_type',['home_or_draw','away_or_draw']);
+        $counts=(clone $base)->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total','status');
+        $analyses=$base->when($status,fn($query)=>$query->where('status',$status))
+            ->when($side,fn($query)=>$query->where('market_type',$side))
+            ->get()->sortBy(fn($analysis)=>$analysis->fixture->kickoff_at->format('Y-m-d H:i:s').'|'.$analysis->fixture_id.'|'.$analysis->market_type)->values();
+        return view('football.double-chance',compact('date','status','side','counts','analyses'));
+    }
     public function refresh(Request $request,FixtureImporter $importer,FixtureAnalysisService $service){$data=$request->validate(['date'=>'required|date']);$date=Carbon::parse($data['date']);$count=$importer->importDate($date->toDateString());$fixtures=Fixture::with(['homeTeam','awayTeam','competition'])->whereDate('kickoff_at',$date)->get();$analysed=0;foreach($fixtures as $fixture){if(in_array($fixture->status,['FT','AET','PEN','CANC','PST'],true))continue;$analysed+=count($service->analyse($fixture));}return redirect()->route('football.dashboard',['date'=>$date->toDateString()])->with('message',"Synced {$count} fixtures and generated {$analysed} market analyses.");}
     public function show(MarketAnalysis $analysis){$analysis->load(['fixture.competition','fixture.homeTeam','fixture.awayTeam']);return view('football.analysis',compact('analysis'));}
     public function buildTicket(Request $request,TicketBuilder $builder){$data=$request->validate(['date'=>'required|date','minimum_score'=>'integer|min:0|max:100','minimum_data_quality'=>'integer|min:0|max:100','maximum_selections'=>'integer|min:1|max:20','maximum_per_competition'=>'integer|min:1|max:10','allowed_markets'=>'array']);$data['exclude_high_variance']=$request->boolean('exclude_high_variance',true);$ticket=$builder->build(Carbon::parse($data['date']),$data);return redirect()->route('football.tickets.show',$ticket);}

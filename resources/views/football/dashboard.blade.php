@@ -2,6 +2,7 @@
 @section('title','Daily Screening')
 @section('content')
 <h1>Daily Screening</h1>
+<p><a class="btn secondary" href="{{ route('football.double-chance', ['date' => $date->toDateString()]) }}">View &amp; print Win or Draw analyses</a></p>
 <p class="muted">Engineering scores are screening scores, not probabilities. The table shows only the highest-ranked market per fixture; use Details to audit its evidence. Low data quality and high-variance competitions should be treated cautiously.</p>
 <div class="card"><form method="GET" class="row"><label>Date<input type="date" name="date" value="{{ $date->toDateString() }}"></label><button class="btn">View date</button></form></div>
 <div class="grid">
