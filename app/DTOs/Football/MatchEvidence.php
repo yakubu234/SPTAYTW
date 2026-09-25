@@ -25,5 +25,11 @@ final readonly class MatchEvidence {
   public float $awayRelevantOver35Rate=0.0,
   public float $homeRelevantAverageGoals=0.0,
   public float $awayRelevantAverageGoals=0.0,
+  public float $homeNonLossRate=0.0,
+  public float $awayNonLossRate=0.0,
+  public float $homeRelevantNonLossRate=0.0,
+  public float $awayRelevantNonLossRate=0.0,
+  public int $homeRelevantSampleSize=0,
+  public int $awayRelevantSampleSize=0,
  ) {}
 }

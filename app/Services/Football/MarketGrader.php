@@ -1,2 +1,44 @@
 <?php
-namespace App\Services\Football;use App\Models\MarketAnalysis;final class MarketGrader{public function grade(MarketAnalysis $a):?string{$f=$a->fixture;if($f->home_goals===null||$f->away_goals===null)return null;$h=(int)$f->home_goals;$w=(int)$f->away_goals;return match($a->market_type){'team_over_0_5'=>$this->team05($a->selection,$f->homeTeam->name,$h,$w),'under_4_5'=>(($h+$w)<5?'won':'lost'),'home'=>($h>$w?'won':'lost'),'away'=>($w>$h?'won':'lost'),'team_or_gg'=>$this->teamOrGg($a->selection,$f->homeTeam->name,$h,$w),default=>null};}private function team05(string $s,string $home,int $h,int $a):string{return str_starts_with($s,$home)?($h>0?'won':'lost'):($a>0?'won':'lost');}private function teamOrGg(string $s,string $home,int $h,int $a):string{$gg=$h>0&&$a>0;$selectedHome=str_starts_with($s,$home);$win=$selectedHome?$h>$a:$a>$h;return($win||$gg)?'won':'lost';}}
+
+namespace App\Services\Football;
+
+use App\Models\MarketAnalysis;
+
+final class MarketGrader
+{
+    public function grade(MarketAnalysis $analysis): ?string
+    {
+        $fixture = $analysis->fixture;
+        if ($fixture->home_goals === null || $fixture->away_goals === null) return null;
+
+        $home = (int) $fixture->home_goals;
+        $away = (int) $fixture->away_goals;
+
+        return match ($analysis->market_type) {
+            'team_over_0_5' => $this->team05($analysis->selection, $fixture->homeTeam->name, $home, $away),
+            'under_4_5' => $home + $away < 5 ? 'won' : 'lost',
+            'home' => $home > $away ? 'won' : 'lost',
+            'away' => $away > $home ? 'won' : 'lost',
+            'home_or_draw' => $home >= $away ? 'won' : 'lost',
+            'away_or_draw' => $away >= $home ? 'won' : 'lost',
+            'team_or_gg' => $this->teamOrGg($analysis->selection, $fixture->homeTeam->name, $home, $away),
+            default => null,
+        };
+    }
+
+    private function team05(string $selection, string $homeName, int $home, int $away): string
+    {
+        return str_starts_with($selection, $homeName)
+            ? ($home > 0 ? 'won' : 'lost')
+            : ($away > 0 ? 'won' : 'lost');
+    }
+
+    private function teamOrGg(string $selection, string $homeName, int $home, int $away): string
+    {
+        $bothScore = $home > 0 && $away > 0;
+        $selectedHome = str_starts_with($selection, $homeName);
+        $selectedWins = $selectedHome ? $home > $away : $away > $home;
+
+        return $selectedWins || $bothScore ? 'won' : 'lost';
+    }
+}

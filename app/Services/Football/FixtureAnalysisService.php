@@ -3,7 +3,7 @@
 namespace App\Services\Football;
 
 use App\Models\{Fixture, MarketAnalysis};
-use App\Services\Analysis\Markets\{TeamOver05Analyser, Under45Analyser, MatchWinnerAnalyser, TeamOrGGAnalyser};
+use App\Services\Analysis\Markets\{TeamOver05Analyser, Under45Analyser, MatchWinnerAnalyser, TeamOrGGAnalyser, DoubleChanceAnalyser};
 
 final class FixtureAnalysisService
 {
@@ -14,6 +14,7 @@ final class FixtureAnalysisService
         private Under45Analyser $under45,
         private MatchWinnerAnalyser $winner,
         private TeamOrGGAnalyser $teamOrGg,
+        private DoubleChanceAnalyser $doubleChance,
     ) {}
 
     public function analyse(Fixture $fixture): array
@@ -28,6 +29,7 @@ final class FixtureAnalysisService
         $matchEvidence = $this->matchEvidence->build($fixture);
         $results[] = $this->under45->analyse($matchEvidence);
         array_push($results, ...$this->winner->analyse($fixture->homeTeam->name, $fixture->awayTeam->name, $matchEvidence));
+        array_push($results, ...$this->doubleChance->analyse($fixture->homeTeam->name, $fixture->awayTeam->name, $matchEvidence));
         array_push($results, ...$this->teamOrGg->analyse($fixture->homeTeam->name, $fixture->awayTeam->name, $matchEvidence));
 
         return array_map(function ($result) use ($fixture) {
