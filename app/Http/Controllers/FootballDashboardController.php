@@ -21,14 +21,16 @@ class FootballDashboardController extends Controller {
         if(!in_array($status,['','strong_qualified','qualified','watch','skip'],true))$status='';
         $side=$request->string('side')->toString();
         if(!in_array($side,['','home_or_draw','away_or_draw'],true))$side='';
+        $reviewOnly=$request->boolean('review_only');
         $base=MarketAnalysis::with(['fixture.competition','fixture.homeTeam','fixture.awayTeam'])
             ->whereHas('fixture',fn($query)=>$query->whereDate('kickoff_at',$date->toDateString()))
             ->whereIn('market_type',['home_or_draw','away_or_draw']);
         $counts=(clone $base)->selectRaw('status, COUNT(*) AS total')->groupBy('status')->pluck('total','status');
         $analyses=$base->when($status,fn($query)=>$query->where('status',$status))
             ->when($side,fn($query)=>$query->where('market_type',$side))
-            ->get()->sortBy(fn($analysis)=>$analysis->fixture->kickoff_at->format('Y-m-d H:i:s').'|'.$analysis->fixture_id.'|'.$analysis->market_type)->values();
-        return view('football.double-chance',compact('date','status','side','counts','analyses'));
+            ->get()->when($reviewOnly,fn($items)=>$items->filter(fn($analysis)=>in_array('Manual review candidate: strong overall non-loss record, but too few venue matches to qualify.', $analysis->positive_signals ?? [],true)))
+            ->sortBy(fn($analysis)=>$analysis->fixture->kickoff_at->format('Y-m-d H:i:s').'|'.$analysis->fixture_id.'|'.$analysis->market_type)->values();
+        return view('football.double-chance',compact('date','status','side','counts','analyses','reviewOnly'));
     }
     public function refresh(Request $request,FixtureImporter $importer,FixtureAnalysisService $service){$data=$request->validate(['date'=>'required|date']);$date=Carbon::parse($data['date']);$count=$importer->importDate($date->toDateString());$fixtures=Fixture::with(['homeTeam','awayTeam','competition'])->whereDate('kickoff_at',$date)->get();$analysed=0;foreach($fixtures as $fixture){if(in_array($fixture->status,['FT','AET','PEN','CANC','PST'],true))continue;$analysed+=count($service->analyse($fixture));}return redirect()->route('football.dashboard',['date'=>$date->toDateString()])->with('message',"Synced {$count} fixtures and generated {$analysed} market analyses.");}
     public function show(MarketAnalysis $analysis){$analysis->load(['fixture.competition','fixture.homeTeam','fixture.awayTeam']);return view('football.analysis',compact('analysis'));}

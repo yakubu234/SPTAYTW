@@ -9,7 +9,7 @@
     .dc-table td{overflow-wrap:anywhere}.dc-table ul{margin:5px 0 0;padding-left:17px}.dc-table li{margin:2px 0}
     .dc-table tr{break-inside:avoid;page-break-inside:avoid}.dc-risk{font-weight:600;color:#991b1b}
     @@media(max-width:780px){.dc-table,.dc-table tbody,.dc-table tr,.dc-table td{display:block;width:100%}.dc-table thead{display:none}.dc-table tr{border-bottom:2px solid #e2e8f0;padding:8px 0}.dc-table td{border:0;padding:4px 0}.dc-table td::before{content:attr(data-label) ': ';font-weight:700;color:#475569}}
-    @@media print{@@page{size:A4 landscape;margin:10mm}body{background:#fff;color:#111}.nav,.dc-controls,.dc-print,.alert{display:none!important}.wrap{max-width:none;padding:0}.card{padding:0;border:0;margin:0}.scroll{overflow:visible}.dc-table{font-size:10px}.dc-table th,.dc-table td{padding:5px;vertical-align:top}.dc-table tr{break-inside:avoid;page-break-inside:avoid}.dc-table ul{padding-left:13px}.dc-table td::before{display:none}a{color:inherit;text-decoration:none}.badge{border:1px solid #aaa;background:#fff!important;color:#111!important}h1{font-size:19px}}
+    @@media print{@@page{size:A4 landscape;margin:10mm}body{background:#fff;color:#111}.nav,.dc-controls,.dc-print,.alert{display:none!important}.wrap{max-width:none;padding:0}.card{padding:0;border:0;margin:0}.scroll{overflow:visible}.dc-table{display:table!important;width:100%;table-layout:fixed;font-size:10px}.dc-table thead{display:table-header-group!important}.dc-table tbody{display:table-row-group!important}.dc-table tr{display:table-row!important;break-inside:avoid;page-break-inside:avoid}.dc-table th,.dc-table td{display:table-cell!important;width:auto;padding:5px;vertical-align:top}.dc-table ul{padding-left:13px}.dc-table td::before{display:none!important}a{color:inherit;text-decoration:none}.badge{border:1px solid #aaa;background:#fff!important;color:#111!important}h1{font-size:19px}}
 </style>
 <div class="dc-head">
     <div>
@@ -23,6 +23,7 @@
         <label>Date <input type="date" name="date" value="{{ $date->toDateString() }}"></label>
         <label>Status <select name="status"><option value="">All statuses</option>@foreach(['strong_qualified'=>'Strong Qualified','qualified'=>'Qualified','watch'=>'Watch','skip'=>'Skip'] as $value=>$label)<option value="{{ $value }}" @selected($status===$value)>{{ $label }}</option>@endforeach</select></label>
         <label>Side <select name="side"><option value="">Both sides</option><option value="home_or_draw" @selected($side==='home_or_draw')>Home or draw (1X)</option><option value="away_or_draw" @selected($side==='away_or_draw')>Away or draw (X2)</option></select></label>
+        <label><span>Manual review</span><select name="review_only"><option value="0">All candidates</option><option value="1" @selected($reviewOnly)>Limited venue history</option></select></label>
         <button class="btn" type="submit">Apply</button>
         <a class="btn secondary" href="{{ route('football.double-chance',['date'=>$date->toDateString()]) }}">Show all</a>
     </form>
@@ -36,7 +37,7 @@
     <td data-label="Fixture">{{ $analysis->fixture->homeTeam->name ?? 'Home' }} vs {{ $analysis->fixture->awayTeam->name ?? 'Away' }}</td>
     <td data-label="Selection"><strong>{{ $analysis->market_type==='home_or_draw'?'1X':'X2' }} · {{ $analysis->selection }}</strong><br><a href="{{ route('football.analysis.show',$analysis) }}">Full evidence</a></td>
     <td data-label="Score / DQ">{{ $analysis->score }} / {{ $analysis->data_quality_score }}</td>
-    <td data-label="Status"><span class="badge {{ $analysis->status }}">{{ str_replace('_',' ',strtoupper($analysis->status)) }}</span></td>
+    <td data-label="Status"><span class="badge {{ $analysis->status }}">{{ str_replace('_',' ',strtoupper($analysis->status)) }}</span>@if(in_array('Manual review candidate: strong overall non-loss record, but too few venue matches to qualify.', $analysis->positive_signals ?? [],true))<br><small>Manual review · not qualified</small>@endif</td>
     <td data-label="Evidence and risk">
         @if($analysis->positive_signals)<ul>@foreach($analysis->positive_signals as $signal)<li>{{ $signal }}</li>@endforeach</ul>@endif
         @if($analysis->contradictions)<ul class="dc-risk">@foreach($analysis->contradictions as $signal)<li>{{ $signal }}</li>@endforeach</ul>@else<p class="dc-risk">{{ $analysis->main_risk }}</p>@endif
