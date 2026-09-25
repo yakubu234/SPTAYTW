@@ -4,6 +4,7 @@ namespace App\Services\Analysis\Markets;
 
 use App\DTOs\Football\{MarketAnalysisResult, MatchEvidence};
 use App\Enums\MarketType;
+use App\Enums\AnalysisStatus;
 use App\Services\Analysis\MarketStatusResolver;
 
 final class DoubleChanceAnalyser
@@ -58,16 +59,35 @@ final class DoubleChanceAnalyser
 
         $score = max(0, min(100, $score));
         $quality = max(0, min(100, $quality));
+        $status = $this->status->resolve($score, $quality);
+
+        // A short venue split can look perfect by chance. Do not promote a
+        // new double-chance market on score alone, especially with a rival
+        // that frequently wins its corresponding away/home fixtures.
+        $reliableProfile = $relevant >= .80 && $overall >= .80
+            && $opponentRelevantWins <= .30 && !$e->highVarianceCompetition && !$e->rotationRisk;
+        if (!$reliableProfile || $splitCount < 6 || $e->sampleSize < 8 || $quality < 75) {
+            if ($status === AnalysisStatus::STRONG || $status === AnalysisStatus::QUALIFIED) {
+                $status = AnalysisStatus::WATCH;
+            }
+            $contradictions[] = 'Win-or-draw qualification needs at least 8 recent matches, 6 relevant venue matches, 80% non-loss rates, low opponent win rate and DQ 75.';
+        } elseif ($status === AnalysisStatus::STRONG && ($splitCount < 7 || $quality < 80)) {
+            $status = AnalysisStatus::QUALIFIED;
+            $contradictions[] = 'Strong qualification needs at least 7 relevant venue matches and DQ 80.';
+        }
+
+        $risk = $contradictions[0] ?? 'The selection loses if the opposing team wins.';
+        $risk .= ' New market: observed grading/calibration is still required.';
 
         return new MarketAnalysisResult(
             $home ? MarketType::HOME_OR_DRAW : MarketType::AWAY_OR_DRAW,
             "{$name} Win or Draw",
             $score,
             $quality,
-            $this->status->resolve($score, $quality),
+            $status,
             $positive,
             $contradictions,
-            $contradictions[0] ?? 'The selection loses if the opposing team wins. This new market is not yet calibrated against graded results.'
+            $risk
         );
     }
 }
