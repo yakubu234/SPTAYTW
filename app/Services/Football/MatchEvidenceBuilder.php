@@ -46,6 +46,12 @@ final class MatchEvidenceBuilder
             $this->rate($av, fn ($r) => $this->total($r) >= 4),
             $this->averageGoals($hv),
             $this->averageGoals($av),
+            $this->nonLoss($h, $f->homeTeam->provider_id),
+            $this->nonLoss($a, $f->awayTeam->provider_id),
+            $this->nonLoss($hv, $f->homeTeam->provider_id),
+            $this->nonLoss($av, $f->awayTeam->provider_id),
+            count($hv),
+            count($av),
         );
     }
 
@@ -68,5 +74,6 @@ final class MatchEvidenceBuilder
     private function total(array $r): int { return (int) $r['goals']['home'] + (int) $r['goals']['away']; }
     private function rate(array $r, callable $f): float { return $r ? count(array_filter($r, $f)) / count($r) : 0.0; }
     private function win(array $r, int $id): float { return $this->rate($r, fn ($x) => $this->gf($x, $id) > $this->ga($x, $id)); }
+    private function nonLoss(array $r, int $id): float { return $this->rate($r, fn ($x) => $this->gf($x, $id) >= $this->ga($x, $id)); }
     private function averageGoals(array $r): float { return $r ? array_sum(array_map(fn ($x) => $this->total($x), $r)) / count($r) : 0.0; }
 }
