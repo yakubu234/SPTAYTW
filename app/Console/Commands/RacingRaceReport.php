@@ -27,7 +27,7 @@ class RacingRaceReport extends Command
                 $this->warn('NO BET — no completed analysis for active runners.');
                 continue;
             }
-            $this->table(['Rank','Horse','Score','Quality','History','Recent form','Existing status','Warnings'],
+            $this->table(['Rank','Horse','Score','Quality','History','Historic Top 3','Historic Top 4','Recent form','Existing status','Warnings'],
                 $ranked->take(4)->map(function($a,$i) use($race) {
                     $e=$a->evidence ?? [];
                     $warnings=[];
@@ -38,6 +38,8 @@ class RacingRaceReport extends Command
                     if(in_array($a->race_confidence,['C','D'],true)) $warnings[]='Weak race separation';
                     return [$i+1,$race->runners->firstWhere('id',$a->runner_id)?->horse ?? 'Unknown',
                         $a->score,$a->data_quality,(int)($e['rated_history_runs']??0),
+                        isset($e['top3_rate'])?number_format(100*(float)$e['top3_rate'],1).'%':'-',
+                        isset($e['top4_rate'])?number_format(100*(float)$e['top4_rate'],1).'%':'-',
                         isset($e['recent_form_score'])?number_format((float)$e['recent_form_score'],1):'-',
                         strtoupper($a->status),implode('; ',$warnings) ?: '-'];
                 })->all());
@@ -46,7 +48,7 @@ class RacingRaceReport extends Command
                 ? 'NO BET — no runner passed the existing predictive gates.'
                 : 'REVIEW ONLY — '.$qualified->count().' predictive qualifier(s); no validated Top-3/Top-4 betting recommendation.');
         }
-        $this->warn('Ranking is not a finishing-position guarantee. Existing place_probability is heuristic, not validated Top-3 or Top-4 odds. Check bookmaker terms and non-runners.');
+        $this->warn('Historic Top 3/4 frequencies are descriptive, not calibrated forecasts; previously enriched records may lack Top 4 until refreshed. Ranking is not a finishing-position guarantee. Existing place_probability is heuristic, not validated Top-3 or Top-4 odds. Check bookmaker terms and non-runners.');
         return self::SUCCESS;
     }
 }
