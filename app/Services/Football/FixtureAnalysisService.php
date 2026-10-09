@@ -3,7 +3,7 @@
 namespace App\Services\Football;
 
 use App\Models\{Fixture, MarketAnalysis};
-use App\Services\Analysis\Markets\{TeamOver05Analyser, Under45Analyser, MatchWinnerAnalyser, TeamOrGGAnalyser, DoubleChanceAnalyser};
+use App\Services\Analysis\Markets\{TeamOver05Analyser, Under45Analyser, MatchWinnerAnalyser, TeamOrGGAnalyser, DoubleChanceAnalyser, CornerAnalyser};
 
 final class FixtureAnalysisService
 {
@@ -15,6 +15,8 @@ final class FixtureAnalysisService
         private MatchWinnerAnalyser $winner,
         private TeamOrGGAnalyser $teamOrGg,
         private DoubleChanceAnalyser $doubleChance,
+        private CornerEvidenceBuilder $cornerEvidence,
+        private CornerAnalyser $corners,
     ) {}
 
     public function analyse(Fixture $fixture): array
@@ -31,6 +33,7 @@ final class FixtureAnalysisService
         array_push($results, ...$this->winner->analyse($fixture->homeTeam->name, $fixture->awayTeam->name, $matchEvidence));
         array_push($results, ...$this->doubleChance->analyse($fixture->homeTeam->name, $fixture->awayTeam->name, $matchEvidence));
         array_push($results, ...$this->teamOrGg->analyse($fixture->homeTeam->name, $fixture->awayTeam->name, $matchEvidence));
+        array_push($results, ...$this->corners->analyse($this->cornerEvidence->build($fixture)));
 
         return array_map(function ($result) use ($fixture) {
             // Team display names sometimes change (e.g. Czech Republic U17 to

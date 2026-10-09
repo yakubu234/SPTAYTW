@@ -15,6 +15,8 @@ final class MarketGrader
         $away = (int) $fixture->away_goals;
 
         return match ($analysis->market_type) {
+            'corners_over_4_5' => $this->corners($fixture->home_corners, $fixture->away_corners, 5, true),
+            'corners_under_18' => $this->corners($fixture->home_corners, $fixture->away_corners, 18, false),
             'team_over_0_5' => $this->team05($analysis->selection, $fixture->homeTeam->name, $home, $away),
             'under_4_5' => $home + $away < 5 ? 'won' : 'lost',
             'home' => $home > $away ? 'won' : 'lost',
@@ -24,6 +26,13 @@ final class MarketGrader
             'team_or_gg' => $this->teamOrGg($analysis->selection, $fixture->homeTeam->name, $home, $away),
             default => null,
         };
+    }
+
+    private function corners(?int $home, ?int $away, int $line, bool $over): ?string
+    {
+        if ($home === null || $away === null) return null;
+        $total = $home + $away;
+        return ($over ? $total >= $line : $total < $line) ? 'won' : 'lost';
     }
 
     private function team05(string $selection, string $homeName, int $home, int $away): string
