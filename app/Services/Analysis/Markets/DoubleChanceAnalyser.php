@@ -60,6 +60,14 @@ final class DoubleChanceAnalyser
         $score = max(0, min(100, $score));
         $quality = max(0, min(100, $quality));
         $status = $this->status->resolve($score, $quality);
+        // Sparse venue history is an evidence gap, not evidence that the
+        // selected side will lose. Surface strong overall records separately
+        // for human review without upgrading the model's qualification.
+        if ($splitCount < 6 && $e->sampleSize >= 8 && $overall >= .80
+            && $relevant >= .70 && $opponentRelevantWins <= .30
+            && !$e->highVarianceCompetition) {
+            $positive[] = 'Manual review candidate: strong overall non-loss record, but too few venue matches to qualify.';
+        }
 
         // A short venue split can look perfect by chance. Do not promote a
         // new double-chance market on score alone, especially with a rival

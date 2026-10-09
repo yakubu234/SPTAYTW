@@ -87,6 +87,7 @@ class RacingEnrichmentService
         $nonFinishes = max(0, $runs - $ratedRuns);
         $wins = count(array_filter($finishes, fn ($p) => $p === 1));
         $top3 = count(array_filter($finishes, fn ($p) => $p <= 3));
+        $top4 = count(array_filter($finishes, fn ($p) => $p <= 4));
         $avgFinish = $ratedRuns ? array_sum($finishes) / $ratedRuns : null;
         $completionRate = $runs ? $ratedRuns / $runs : null;
 
@@ -111,8 +112,10 @@ class RacingEnrichmentService
             'rated_history_runs' => $ratedRuns,
             'wins' => $wins,
             'top3' => $top3,
+            'top4' => $top4,
             'win_rate' => $runs ? round($wins / $runs, 4) : null,
             'top3_rate' => $runs ? round($top3 / $runs, 4) : null,
+            'top4_rate' => $runs ? round($top4 / $runs, 4) : null,
             'average_finish' => $avgFinish !== null ? round($avgFinish, 2) : null,
             'non_finishes' => $nonFinishes,
             'completion_rate' => $completionRate !== null ? round($completionRate, 4) : null,

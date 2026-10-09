@@ -63,4 +63,11 @@ final class DoubleChanceAnalyserTest extends TestCase
         [$home] = (new DoubleChanceAnalyser(new MarketStatusResolver()))->analyse('Home FC', 'Away FC', $this->evidence(6, 1.0, 0.0));
         $this->assertSame(AnalysisStatus::QUALIFIED, $home->status);
     }
+
+    public function test_sparse_venue_history_with_strong_overall_record_is_flagged_for_manual_review_only(): void
+    {
+        [$home] = (new DoubleChanceAnalyser(new MarketStatusResolver()))->analyse('Home FC', 'Away FC', $this->evidence(3, 1.0, .2));
+        $this->assertSame(AnalysisStatus::SKIP, $home->status);
+        $this->assertStringContainsString('Manual review candidate', implode(' ', $home->positiveSignals));
+    }
 }
