@@ -43,6 +43,61 @@ class InspectRacingData extends Command
             ]);
         }
 
+        if ($analyses->isNotEmpty()) {
+            $minimumHistory = 3;
+            $minimumRecent = (float) config('racing.thresholds.minimum_recent_form', 30);
+            $minimumQuality = (int) config('racing.thresholds.minimum_data_quality', 55);
+            $minimumScore = (int) config('racing.thresholds.qualified', 72);
+
+            $reasons = [
+                'Insufficient history (<3 rated runs)' => 0,
+                'Weak recent form' => 0,
+                'Low data quality' => 0,
+                'Race confidence C/D' => 0,
+                'Below candidate score' => 0,
+                'Passed all predictive gates' => 0,
+            ];
+
+            foreach ($analyses as $a) {
+                $e = $a->evidence ?? [];
+                if ((int)($e['rated_history_runs'] ?? 0) < $minimumHistory) {
+                    $reasons['Insufficient history (<3 rated runs)']++;
+                } elseif (($e['recent_form_score'] ?? null) !== null && (float)$e['recent_form_score'] < $minimumRecent) {
+                    $reasons['Weak recent form']++;
+                } elseif ((int)$a->data_quality < $minimumQuality) {
+                    $reasons['Low data quality']++;
+                } elseif (in_array($a->race_confidence, ['C','D'], true)) {
+                    $reasons['Race confidence C/D']++;
+                } elseif ((int)$a->score < $minimumScore) {
+                    $reasons['Below candidate score']++;
+                } else {
+                    $reasons['Passed all predictive gates']++;
+                }
+            }
+
+            $raceSummary = $races->map(function($race) use ($minimumHistory,$minimumRecent,$minimumQuality,$minimumScore) {
+                $as = $race->analyses;
+                $passed = $as->filter(function($a) use ($minimumHistory,$minimumRecent,$minimumQuality,$minimumScore) {
+                    $e=$a->evidence ?? [];
+                    return (int)($e['rated_history_runs'] ?? 0) >= $minimumHistory
+                        && (($e['recent_form_score'] ?? null) === null || (float)$e['recent_form_score'] >= $minimumRecent)
+                        && (int)$a->data_quality >= $minimumQuality
+                        && !in_array($a->race_confidence,['C','D'],true)
+                        && (int)$a->score >= $minimumScore;
+                })->count();
+                return $passed;
+            });
+
+            $this->newLine();
+            $this->info('Qualification gate diagnostics (first failing gate per runner)');
+            $this->table(['Gate outcome','Runners'], collect($reasons)->map(fn($count,$reason)=>[$reason,$count])->values()->all());
+            $this->line(sprintf(
+                'Race-level: %d/%d races have at least one runner passing every predictive gate; %d/%d races have none.',
+                $raceSummary->filter(fn($n)=>$n>0)->count(), $races->count(),
+                $raceSummary->filter(fn($n)=>$n===0)->count(), $races->count()
+            ));
+        }
+
         $shortlist = $analyses
             ->filter(fn($a) => in_array($a->status, ['strong','candidate','strong_qualified','qualified'], true))
             ->sortByDesc('score')
