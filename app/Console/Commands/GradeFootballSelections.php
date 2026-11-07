@@ -46,7 +46,7 @@ class GradeFootballSelections extends Command
         $bar = $this->output->createProgressBar($rows->count());
 
         foreach ($rows as $analysis) {
-            if ($analysis->market_type === 'goal_first_5' && !$this->option('no-sync')
+            if (in_array($analysis->market_type, ['goal_first_5', 'goal_first_5_no'], true) && !$this->option('no-sync')
                 && $analysis->fixture->early_goal_events_checked_at === null) {
                 try {
                     $earlyGoals->fetch($analysis->fixture);

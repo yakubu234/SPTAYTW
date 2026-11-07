@@ -15,6 +15,22 @@ class FootballDashboardController extends Controller {
         $latest=$analyses->groupBy('fixture_id')->map->first()->sortByDesc('score')->values();
         $stats=['fixtures'=>Fixture::whereDate('kickoff_at',$date)->count(),'strong'=>$latest->where('status','strong_qualified')->count(),'qualified'=>$latest->where('status','qualified')->count(),'watch'=>$latest->where('status','watch')->count(),'skip'=>$latest->where('status','skip')->count()]; return view('football.dashboard',compact('date','latest','stats'));
     }
+    public function earlyGoals(Request $request){
+        $date=Carbon::parse($request->string('date')->toString() ?: now()->toDateString());
+        $side=$request->string('side')->toString();
+        if(!in_array($side,['','goal_first_5','goal_first_5_no'],true))$side='goal_first_5_no';
+        if($side==='')$side='goal_first_5_no';
+        $base=MarketAnalysis::with(['fixture.competition','fixture.homeTeam','fixture.awayTeam'])
+            ->whereHas('fixture',fn($query)=>$query->whereDate('kickoff_at',$date->toDateString()))
+            ->whereIn('market_type',['goal_first_5','goal_first_5_no']);
+        $analyses=(clone $base)->where('market_type',$side)->get()
+            ->sortBy(fn($a)=>$a->fixture->kickoff_at->format('Y-m-d H:i:s').'|'.$a->fixture_id)->values();
+        $counts=['yes'=>(clone $base)->where('market_type','goal_first_5')->count(),
+            'no'=>(clone $base)->where('market_type','goal_first_5_no')->count(),
+            'watch'=>$analyses->where('status','watch')->count(),
+            'skip'=>$analyses->where('status','skip')->count()];
+        return view('football.early-goals',compact('date','side','counts','analyses'));
+    }
     public function doubleChance(Request $request){
         $date=Carbon::parse($request->string('date')->toString() ?: now()->toDateString());
         $status=$request->string('status')->toString();

@@ -40,6 +40,8 @@ final class SyncFootballEarlyGoals extends Command
         }
         $matches = $query->orderByDesc('kickoff_at')->get();
         $checked = $complete = 0;
+        $bar = $this->output->createProgressBar(min($limit, $matches->count()));
+        $bar->start();
         foreach ($matches->take($limit) as $match) {
             try {
                 if ($this->option('retry-missing') && $match->first_five_goal === null) {
@@ -48,12 +50,17 @@ final class SyncFootballEarlyGoals extends Command
                 $events->fetch($match);
                 $complete += (int) ($match->first_five_goal !== null);
                 $checked++;
+                $bar->advance();
             } catch (Throwable $e) {
+                $bar->finish();
+                $this->newLine();
                 $this->error("Event request failed for fixture {$match->provider_id}: {$e->getMessage()}");
                 $this->warn("Checked {$checked} matches; re-run to resume cached progress.");
                 return self::FAILURE;
             }
         }
+        $bar->finish();
+        $this->newLine(2);
         $this->info("Early-goal history for {$date}: {$checked} checked, {$complete} complete, ".($checked - $complete).' incomplete; '.max(0, $matches->count() - $checked).' unchecked remain.');
         return self::SUCCESS;
     }
