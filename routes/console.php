@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Schedule;
 
-// Shared-hosting cron only needs to call `php artisan schedule:run` once per minute.
-// The application handles the actual command schedule here.
+// The hosting cron calls `php artisan schedule:run` every minute.
 Schedule::command('football:daily')->dailyAt('07:00')->withoutOverlapping();
 Schedule::command('football:daily')->dailyAt('23:30')->withoutOverlapping();
+Schedule::command('football:prepare-tomorrow')->dailyAt('22:00')->timezone('Africa/Lagos')->withoutOverlapping();

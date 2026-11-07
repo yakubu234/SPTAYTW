@@ -18,9 +18,15 @@ final class AnalyseFootballEarlyGoals extends Command
         $fixtures = Fixture::with(['homeTeam', 'awayTeam', 'competition'])->whereDate('kickoff_at', $date)
             ->whereNotIn('status', ['PST', 'CANC', 'ABD', 'AWD', 'WO'])->orderBy('kickoff_at')->get();
         $rows = [];
+        $counts = ['watch' => 0, 'skip' => 0];
+        $bar = $this->output->createProgressBar($fixtures->count());
+        $this->info("Analysing {$fixtures->count()} playable fixtures for {$date}...");
+        $bar->start();
         try {
             foreach ($fixtures as $fixture) {
-                $result = $analyser->analyse($builder->build($fixture));
+                $evidence = $builder->build($fixture);
+                foreach ([$analyser->analyse($evidence), $analyser->analyseNo($evidence)] as $result) {
+                $counts[$result->status->value]++;
                 $analysis = MarketAnalysis::firstOrNew(['fixture_id' => $fixture->id,
                     'market_type' => $result->market->value, 'selection' => $result->selection]);
                 $analysis->fill(['score' => $result->score, 'data_quality_score' => $result->dataQuality,
@@ -30,15 +36,24 @@ final class AnalyseFootballEarlyGoals extends Command
                 $analysis->save();
                 $rows[] = [$fixture->kickoff_at->format('Y-m-d H:i'),
                     $fixture->homeTeam->name.' vs '.$fixture->awayTeam->name,
-                    $fixture->competition->name, $result->status->value,
+                    $fixture->competition->name, $result->selection, $result->status->value,
                     $result->score.'/'.$result->dataQuality,
                     implode(' | ', $result->positiveSignals)];
+                }
+                $bar->advance();
             }
         } catch (Throwable $e) {
+            $bar->finish();
+            $this->newLine();
             $this->error('Early-goal analysis failed: '.$e->getMessage());
             return self::FAILURE;
         }
-        $this->table(['Kickoff (app timezone)', 'Fixture', 'Competition', 'Status', 'Score/Quality', 'Recent evidence'], $rows);
+        $bar->finish();
+        $this->newLine(2);
+        $this->table(['Metric', 'Count'], [['Fixtures analysed', $fixtures->count()],
+            ['Market analyses', array_sum($counts)],
+            ['Watch', $counts['watch']], ['Skip', $counts['skip']]]);
+        $this->table(['Kickoff (app timezone)', 'Fixture', 'Competition', 'Selection', 'Status', 'Score/Quality', 'Recent evidence'], $rows);
         $this->info("Analysed {$fixtures->count()} playable fixtures. WATCH is a research signal, not a guaranteed outcome.");
         return self::SUCCESS;
     }
