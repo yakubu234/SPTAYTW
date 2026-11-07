@@ -13,6 +13,8 @@ After deploying this branch and migrating:
 
 Repeat the history sync until it reports zero unchecked matches. Use `--retry-missing` only when the provider may now have event records for previously incomplete matches. `football:grade YYYY-MM-DD` refreshes completed fixtures and grades verified early-goal outcomes.
 
+For a busy matchday already in progress, add `--upcoming` to both `football:sync-early-goals` and `football:early-goals`. The history sync now shows progress while collecting team history as well as while fetching event timelines; the first stage can take several minutes if many teams have never been cached.
+
 ## Automatic preparation at 10:00 PM WAT
 
 `routes/console.php` schedules `football:prepare-tomorrow` daily at 22:00 Africa/Lagos. It syncs tomorrow's fixtures, up to 100 corner and 100 early-goal history requests, then runs the regular and early-goal analyses. It does not submit bets. To run it manually:

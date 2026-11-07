@@ -9,7 +9,7 @@ use Throwable;
 
 final class SyncFootballEarlyGoals extends Command
 {
-    protected $signature = 'football:sync-early-goals {date?} {--limit=100 : Maximum event API requests} {--retry-missing : Recheck previously incomplete event timelines}';
+    protected $signature = 'football:sync-early-goals {date?} {--limit=100 : Maximum event API requests} {--upcoming : Prepare only matches that have not kicked off} {--retry-missing : Recheck previously incomplete event timelines}';
     protected $description = 'Cache first-five-minute goal evidence from recent completed fixtures';
 
     public function handle(EarlyGoalEvidenceBuilder $builder, EarlyGoalEventService $events): int
@@ -21,16 +21,28 @@ final class SyncFootballEarlyGoals extends Command
             return self::FAILURE;
         }
         $ids = [];
+        $fixtures = Fixture::with(['homeTeam', 'awayTeam'])->whereDate('kickoff_at', $date)
+            ->whereNotIn('status', ['PST', 'CANC', 'ABD', 'AWD', 'WO'])
+            ->when($this->option('upcoming'), fn ($q) => $q->where('kickoff_at', '>', now())->whereIn('status', ['NS', 'TBD']))
+            ->get();
+        $this->info("Collecting recent history for {$fixtures->count()} fixtures on {$date}...");
+        $discovery = $this->output->createProgressBar($fixtures->count());
+        $discovery->start();
         try {
-            foreach (Fixture::with(['homeTeam', 'awayTeam'])->whereDate('kickoff_at', $date)
-                ->whereNotIn('status', ['PST', 'CANC', 'ABD', 'AWD', 'WO'])->get() as $fixture) {
+            foreach ($fixtures as $fixture) {
                 $history = $builder->build($fixture)['history'];
                 foreach (array_merge($history['home'], $history['away']) as $id) $ids[$id] = true;
+                $discovery->advance();
             }
         } catch (Throwable $e) {
+            $discovery->finish();
+            $this->newLine();
             $this->error('Could not load recent fixture history: '.$e->getMessage());
             return self::FAILURE;
         }
+        $discovery->finish();
+        $this->newLine(2);
+        $this->info('Recent finished matches found: '.count($ids).'. Fetching up to '.$limit.' unchecked event timelines...');
 
         $query = Fixture::whereIn('provider_id', array_keys($ids))->where('status', 'FT');
         if ($this->option('retry-missing')) {

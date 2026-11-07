@@ -9,14 +9,16 @@ use Throwable;
 
 final class AnalyseFootballEarlyGoals extends Command
 {
-    protected $signature = 'football:early-goals {date?}';
+    protected $signature = 'football:early-goals {date?} {--upcoming : Analyse only matches that have not kicked off}';
     protected $description = 'Report first-five-minute goal history for every playable fixture separately from goal-total markets';
 
     public function handle(EarlyGoalEvidenceBuilder $builder, EarlyGoalAnalyser $analyser): int
     {
         $date = $this->argument('date') ?: now()->toDateString();
         $fixtures = Fixture::with(['homeTeam', 'awayTeam', 'competition'])->whereDate('kickoff_at', $date)
-            ->whereNotIn('status', ['PST', 'CANC', 'ABD', 'AWD', 'WO'])->orderBy('kickoff_at')->get();
+            ->whereNotIn('status', ['PST', 'CANC', 'ABD', 'AWD', 'WO'])
+            ->when($this->option('upcoming'), fn ($q) => $q->where('kickoff_at', '>', now())->whereIn('status', ['NS', 'TBD']))
+            ->orderBy('kickoff_at')->get();
         $rows = [];
         $counts = ['watch' => 0, 'skip' => 0];
         $bar = $this->output->createProgressBar($fixtures->count());
