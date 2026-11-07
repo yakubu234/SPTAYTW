@@ -15,6 +15,7 @@ final class MarketGrader
         $away = (int) $fixture->away_goals;
 
         return match ($analysis->market_type) {
+            'goal_first_5' => $fixture->first_five_goal === null ? null : ($fixture->first_five_goal ? 'won' : 'lost'),
             'corners_over_4_5' => $this->corners($fixture->home_corners, $fixture->away_corners, 5, true),
             'corners_under_18' => $this->corners($fixture->home_corners, $fixture->away_corners, 18, false),
             'team_over_0_5' => $this->team05($analysis->selection, $fixture->homeTeam->name, $home, $away),
