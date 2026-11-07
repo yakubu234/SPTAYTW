@@ -15,6 +15,8 @@ Repeat the history sync until it reports zero unchecked matches. Use `--retry-mi
 
 For a busy matchday already in progress, add `--upcoming` to both `football:sync-early-goals` and `football:early-goals`. The history sync now shows progress while collecting team history as well as while fetching event timelines; the first stage can take several minutes if many teams have never been cached.
 
+The request budget is spent in kickoff order: recent histories for the earliest upcoming fixtures are fetched first. `--limit=100` limits event timeline requests, not the history discovery step. When event timelines are incomplete, those matches remain unknown and analyses can stay SKIP even after a successful sync. Do not interpret SKIP as a prediction of an early goal.
+
 ## Automatic preparation at 10:00 PM WAT
 
 `routes/console.php` schedules `football:prepare-tomorrow` daily at 22:00 Africa/Lagos. It syncs tomorrow's fixtures, up to 100 corner and 100 early-goal history requests, then runs the regular and early-goal analyses. It does not submit bets. To run it manually:

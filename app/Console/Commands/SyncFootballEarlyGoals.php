@@ -24,13 +24,15 @@ final class SyncFootballEarlyGoals extends Command
         $fixtures = Fixture::with(['homeTeam', 'awayTeam'])->whereDate('kickoff_at', $date)
             ->whereNotIn('status', ['PST', 'CANC', 'ABD', 'AWD', 'WO'])
             ->when($this->option('upcoming'), fn ($q) => $q->where('kickoff_at', '>', now())->whereIn('status', ['NS', 'TBD']))
-            ->get();
+            ->orderBy('kickoff_at')->get();
         $this->info("Collecting recent history for {$fixtures->count()} fixtures on {$date}...");
         $discovery = $this->output->createProgressBar($fixtures->count());
         $discovery->start();
         try {
             foreach ($fixtures as $fixture) {
                 $history = $builder->build($fixture)['history'];
+                // Keep first-seen order: finish both teams' recent history for
+                // the earliest kickoff before spending requests on later games.
                 foreach (array_merge($history['home'], $history['away']) as $id) $ids[$id] = true;
                 $discovery->advance();
             }
@@ -50,7 +52,8 @@ final class SyncFootballEarlyGoals extends Command
         } else {
             $query->whereNull('early_goal_events_checked_at');
         }
-        $matches = $query->orderByDesc('kickoff_at')->get();
+        $byProviderId = $query->get()->keyBy('provider_id');
+        $matches = collect(array_keys($ids))->map(fn ($id) => $byProviderId->get($id))->filter()->values();
         $checked = $complete = 0;
         $bar = $this->output->createProgressBar(min($limit, $matches->count()));
         $bar->start();
